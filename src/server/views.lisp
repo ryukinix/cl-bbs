@@ -48,6 +48,10 @@
            (:p (:input :type "text" :name "name" :style "display:none")
                (:input :type "text" :name "message" :style "display:none")
                (:input :type "submit" :value "Post")))))
+               
+(defun format-text (text)
+  ;; Placeholder for future BBCode styling. Returning text unmodified for now.
+  text)
 
 (defun render-frontpage-thread (board thread-data index)
   (let* ((thread-id (car thread-data))
@@ -68,7 +72,8 @@
             for content = (cdr (assoc 'cl-bbs/models::content post-data))
             for date = (cdr (assoc 'cl-bbs/models::date post-data))
             do (:p (:strong "Anonymous") " " date " " (:a :href (format nil "/~a/~a#~a" board thread-id post-id) (format nil "No.~a" post-id))
-                   (:raw (format nil "<br>~a<br>" content))))
+                   (:raw (format nil "<br>~a<br>" (format-text content)))
+                   (:raw (render-post-form board thread-id post-id))))
       (:hr))))
 
 (defun render-index (board threads)
@@ -107,7 +112,7 @@
       (:hr)
       (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
-(defun render-post-form (board thread-id)
+(defun render-post-form (board thread-id &optional post-id)
   (with-html-string
     (:dl
      (:form :action (format nil "/~a/~a/post" board thread-id) :method "POST"
@@ -115,6 +120,7 @@
             (:dd (:input :type "text" :name "ornamentum" :size 35 :placeholder "hash"))
             (:dd (:input :type "text" :name "name" :style "display:none")
                  (:input :type "text" :name "message" :style "display:none")
+                 (when post-id (:input :type "hidden" :name "target_post" :value post-id))
                  (:input :type "submit" :value "Reply"))))))
 
 (defun render-thread (board thread-id thread-data)
@@ -135,7 +141,8 @@
               for content = (cdr (assoc 'cl-bbs/models::content post-data))
               for date = (cdr (assoc 'cl-bbs/models::date post-data))
               do (:p (:strong "Anonymous") " " date " " (:a :name (format nil "~a" post-id) :href (format nil "/~a/~a#~a" board thread-id post-id) (format nil "No.~a" post-id))
-                     (:raw (format nil "<br>~a<br>" content))))
+                     (:raw (format nil "<br>~a<br>" (format-text content)))
+                     (:raw (render-post-form board thread-id post-id))))
         (:hr)
         (:raw (render-post-form board thread-id))
         (:hr)

@@ -149,7 +149,7 @@
                                               (cl-bbs/models::truncated . nil)
                                               (cl-bbs/models::posts ,(cadr (assoc 'cl-bbs/models::posts (if (consp (car new-thread-data)) (car new-thread-data) new-thread-data)))))))
                        (write-sexp-file index-path (cons updated-entry rem-index))))))
-               `(303 (:location ,(format nil "/~a/~a#t~ap~a" board thread-id thread-id (car new-post))) ("Redirecting...")))
+               `(303 (:location ,(format nil "/~a/" board)) ("Redirecting...")))
              `(404 (:content-type "text/plain") ("Thread not found")))))
 
       (t
