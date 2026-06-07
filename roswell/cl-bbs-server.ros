@@ -21,7 +21,8 @@ exec ros -Q -- $0 "$@"
                   6666))
          (app (lack:builder
                (:static :path "/static/"
-                        :root (merge-pathnames "src/static/" (asdf:system-source-directory :cl-bbs/server)))
+                        :root (pathname (or (uiop:getenv "SBBS_STATIC_DIR")
+                                            (merge-pathnames "src/static/" (asdf:system-source-directory :cl-bbs/server)))))
                (lambda (env) (cl-bbs/handlers:handle-request env)))))
 
     (format t "Starting cl-bbs on port ~a~%" port)

@@ -13,7 +13,8 @@
       ;; The static middleware intercepts /static/ beforehand.
       ;; We serve the index.html from static dir on root natively.
       ((string= path-info "/")
-       (let ((index-file (merge-pathnames "src/static/index.html" (asdf:system-source-directory :cl-bbs/server))))
+       (let ((index-file (pathname (or (uiop:getenv "SBBS_INDEX_FILE")
+                                       (merge-pathnames "src/static/index.html" (asdf:system-source-directory :cl-bbs/server))))))
          (if (probe-file index-file)
              `(200 (:content-type "text/html; charset=utf-8")
                    (,(uiop:read-file-string index-file)))

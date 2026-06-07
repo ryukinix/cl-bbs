@@ -7,7 +7,9 @@
 
 (in-package :cl-bbs/storage)
 
-(defvar *base-dir* (merge-pathnames "data/" (asdf:system-source-directory :cl-bbs/server)))
+(defvar *base-dir* 
+  (pathname (or (uiop:getenv "SBBS_DATADIR")
+                (merge-pathnames "data/" (asdf:system-source-directory :cl-bbs/server)))))
 
 (defun ensure-board-dirs (board-name)
   (let* ((sexp-dir (merge-pathnames (format nil "sexp/~a/" board-name) *base-dir*))

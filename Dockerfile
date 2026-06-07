@@ -9,6 +9,9 @@ COPY ./roswell roswell
 
 ARG APP_VERSION
 ENV APP_VERSION=$APP_VERSION
+ENV SBBS_DATADIR=/cl-bbs/data/
+ENV SBBS_STATIC_DIR=/cl-bbs/src/static/
+ENV SBBS_INDEX_FILE=/cl-bbs/src/static/index.html
 RUN ros build roswell/cl-bbs-server.ros
 EXPOSE 6666
 ENTRYPOINT ["/cl-bbs/roswell/cl-bbs-server"]
