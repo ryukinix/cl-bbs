@@ -16,9 +16,13 @@ exec ros -Q -- $0 "$@"
 
 (defun main (&rest argv)
   (declare (ignorable argv))
-  (let ((port (or (and argv (parse-integer (car argv) :junk-allowed t))
-                  (parse-integer (or (uiop:getenv "PORT") "9090") :junk-allowed t)
-                  9090)))
+  (let* ((port (or (and argv (parse-integer (car argv) :junk-allowed t))
+                  (parse-integer (or (uiop:getenv "PORT") "8080") :junk-allowed t)
+                  8080))
+         (app (lack:builder
+               (:static :path "/static/"
+                        :root (merge-pathnames "src/static/" (asdf:system-source-directory :cl-bbs/server)))
+               (lambda (env) (cl-bbs/handlers:handle-request env)))))
+
     (format t "Starting cl-bbs on port ~a~%" port)
-    (uiop:symbol-call :cl-bbs/package :start-app port)
-    (loop do (sleep 1000))))
+    (clack:clackup app :port port :server :hunchentoot :use-thread nil)))
