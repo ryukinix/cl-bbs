@@ -49,25 +49,58 @@
                (:input :type "text" :name "message" :style "display:none")
                (:input :type "submit" :value "Post")))))
 
+(defun render-frontpage-thread (board thread-data index)
+  (let* ((thread-id (car thread-data))
+         (props (cdr thread-data))
+         (headline (cdr (assoc 'headline props)))
+         (posts (second (assoc 'posts props)))  ;; (posts ((1 (date . "...") ...))) structure
+         (truncated (cdr (assoc 'truncated props))))
+    (declare (ignore truncated))
+    (with-html-string
+      (:pre :class "jump"
+            (:a :id (format nil "d~a" index)
+                :href (if (= index 10) "#d1" (format nil "#d~a" (1+ index))) "↓")
+            (:raw "&nbsp;"))
+      (:h2 (:a :href (format nil "/~a/~a" board thread-id) headline))
+      ;; we iterate rendering posts here later. For now, a mock block.
+      (:p (format nil "Thread ID: ~a, Posts in index block... TODO" thread-id))
+      (:hr))))
+
 (defun render-index (board threads)
-  (declare (ignore threads))
   (layout (format nil "/~a/ - SchemeBBS" board) nil
     (with-html-string
+      (:h1 board)
       (:raw (render-menu board "frontpage"))
-      (:h1 (format nil "Board /~a/" board))
-      (:p "Frontpage list (TODO)")
       (:hr)
-      (:raw (render-thread-form board)))))
+      (loop for t-data in threads
+            for i from 1
+            do (:raw (render-frontpage-thread board t-data i)))
+      (:raw (render-thread-form board))
+      (:hr)
+      (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
 (defun render-list (board threads)
-  (declare (ignore threads))
   (layout (format nil "/~a/ - SchemeBBS" board) nil
     (with-html-string
+      (:h1 board)
       (:raw (render-menu board "thread list"))
-      (:h1 (format nil "Board /~a/" board))
-      (:p "Thread list (TODO)")
       (:hr)
-      (:raw (render-thread-form board)))))
+      (:table :summary "Thread list"
+              (:thead (:tr (:th "#") (:th "headline") (:th "posts") (:th "last update")))
+              (:tbody
+               (loop for t-data in threads
+                     for i from 1
+                     do (let* ((thread-id (car t-data))
+                               (props (cdr t-data))
+                               (headline (cdr (assoc 'headline props)))
+                               (messages (cdr (assoc 'messages props)))
+                               (date (cdr (assoc 'date props))))
+                          (:tr (:td i)
+                               (:td (:a :href (format nil "/~a/~a" board thread-id) headline))
+                               (:td messages)
+                               (:td (:samp date)))))))
+      (:hr)
+      (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
 (defun render-thread (board thread posts)
   (declare (ignore posts))
