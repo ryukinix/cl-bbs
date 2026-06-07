@@ -1,0 +1,4 @@
+((CL-BBS/MODELS::HEADLINE . "Hello Interned")
+ (CL-BBS/MODELS::POSTS
+  (1 (CL-BBS/MODELS::DATE . "2026-06-07 11:44") (CL-BBS/MODELS::VIP)
+   (CL-BBS/MODELS::CONTENT . "This time using correct package symbols!"))))

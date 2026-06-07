@@ -52,9 +52,9 @@
 (defun render-frontpage-thread (board thread-data index)
   (let* ((thread-id (car thread-data))
          (props (cdr thread-data))
-         (headline (cdr (assoc 'headline props)))
-         (posts (second (assoc 'posts props)))  ;; (posts ((1 (date . "...") ...))) structure
-         (truncated (cdr (assoc 'truncated props))))
+         (headline (cdr (assoc 'cl-bbs/models::headline props)))
+         (posts (second (assoc 'cl-bbs/models::posts props)))
+         (truncated (cdr (assoc 'cl-bbs/models::truncated props))))
     (declare (ignore truncated))
     (with-html-string
       (:pre :class "jump"
@@ -62,8 +62,13 @@
                 :href (if (= index 10) "#d1" (format nil "#d~a" (1+ index))) "↓")
             (:raw "&nbsp;"))
       (:h2 (:a :href (format nil "/~a/~a" board thread-id) headline))
-      ;; we iterate rendering posts here later. For now, a mock block.
-      (:p (format nil "Thread ID: ~a, Posts in index block... TODO" thread-id))
+      (loop for post in posts
+            for post-id = (car post)
+            for post-data = (cdr post)
+            for content = (cdr (assoc 'cl-bbs/models::content post-data))
+            for date = (cdr (assoc 'cl-bbs/models::date post-data))
+            do (:p (:strong "Anonymous") " " date " " (:a :href (format nil "/~a/~a#~a" board thread-id post-id) (format nil "No.~a" post-id))
+                   (:raw (format nil "<br>~a<br>" content))))
       (:hr))))
 
 (defun render-index (board threads)
@@ -92,9 +97,9 @@
                      for i from 1
                      do (let* ((thread-id (car t-data))
                                (props (cdr t-data))
-                               (headline (cdr (assoc 'headline props)))
-                               (messages (cdr (assoc 'messages props)))
-                               (date (cdr (assoc 'date props))))
+                               (headline (cdr (assoc 'cl-bbs/models::headline props)))
+                               (messages (cdr (assoc 'cl-bbs/models::messages props)))
+                               (date (cdr (assoc 'cl-bbs/models::date props))))
                           (:tr (:td i)
                                (:td (:a :href (format nil "/~a/~a" board thread-id) headline))
                                (:td messages)
