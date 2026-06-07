@@ -10,8 +10,14 @@
          (parts (remove "" (cl-ppcre:split "/" path-info) :test #'string=)))
     
     (cond
+      ;; The static middleware intercepts /static/ beforehand.
+      ;; We serve the index.html from static dir on root natively.
       ((string= path-info "/")
-       `(200 (:content-type "text/plain") ("SchemeBBS clone root")))
+       (let ((index-file (merge-pathnames "src/static/index.html" (asdf:system-source-directory :cl-bbs/server))))
+         (if (probe-file index-file)
+             `(200 (:content-type "text/html; charset=utf-8")
+                   (,(uiop:read-file-string index-file)))
+             `(200 (:content-type "text/plain") ("SchemeBBS clone root")))))
       
       ((and (eq method :get)
             (= (length parts) 1))
