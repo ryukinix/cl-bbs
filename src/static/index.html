@@ -31,8 +31,7 @@ blockquote { color: #666; border-left: 2px solid #999; padding-left: 0.5em; marg
 <P>A SchemeBBS clone written in Common Lisp</P>
 <H2>Boards</H2>
 <UL>
-<LI><A href="/prog/">/prog/</A> - <B>Programming</B> (CS and textboard engineering discussions)</LI>
-<LI><A href="/foo/">/foo/</A> - <B>Foo Reference</B></LI>
+<!--BOARDS-LIST-PLACEHOLDER-->
 </UL>
 <H2>Features</H2>
 <P>One newline is a line break (&lt;BR&gt;), two or more newlines will start a new paragraph.</P>
@@ -40,9 +39,10 @@ blockquote { color: #666; border-left: 2px solid #999; padding-left: 0.5em; marg
 <THEAD><TR><TH>input</TH><TH>output</TH></TR></THEAD>
 <TBODY><TR><TD><SAMP>**bold**</SAMP></TD><TD><B>bold</B></TD></TR>
 <TR><TD><SAMP>__italic__</SAMP></TD><TD><I>italic</I></TD></TR>
-<TR><TD><SAMP>==monospaced==</SAMP></TD><TD><CODE>monospaced</CODE></TD></TR>
+<TR><TD><SAMP>`monospaced`</SAMP></TD><TD><CODE>monospaced</CODE></TD></TR>
 <TR><TD><SAMP>~~spoiler~~</SAMP></TD><TD><DEL>spoiler</DEL></TD></TR>
 <TR><TD><SAMP>http://c2.com</SAMP></TD><TD><A href="http://c2.com">http://c2.com</A></TD></TR>
+<TR><TD><SAMP>https://example.com/pic.png</SAMP></TD><TD>direct link auto-renders as clickable <B>image preview</B></TD></TR>
 <TR><TD><SAMP>link to post &gt;&gt;7</SAMP></TD><TD>link to post <A href="#">&gt;&gt;7</A></TD></TR>
 <TR><TD><SAMP>&gt;quoted text</SAMP></TD><TD><BLOCKQUOTE><P>quoted text</P></BLOCKQUOTE></TD></TR>
 <TR><TD><KBD>```<BR>;;;This is a block of code<BR>(lambda (h)<BR>&nbsp;&nbsp;((lambda (f) (f f))<BR>&nbsp;&nbsp;&nbsp;(lambda (f) (h (lambda (x) ((f f) x))))))<BR>```</KBD></TD>

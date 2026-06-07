@@ -2,11 +2,29 @@
   (:use :cl :cl-who :cl-bbs/models)
   (:export #:render-index
            #:render-list
-           #:render-thread))
+           #:render-thread
+           #:render-preferences))
 
 (in-package :cl-bbs/views)
 
-(defmacro layout (title class &body body)
+(defun render-boards-header ()
+  (let* ((sexp-dir (merge-pathnames "sexp/" cl-bbs/storage::*base-dir*))
+         (paths (and (probe-file sexp-dir) (uiop:subdirectories sexp-dir)))
+         (boards (sort (mapcar (lambda (path)
+                                 (car (last (pathname-directory path))))
+                               paths)
+                       #'string<)))
+    (cl-who:with-html-output-to-string (s nil :indent t)
+      (:p :class "boards" :style "text-align: left; font-size: 0.9em; margin-bottom: 1em;"
+          "[ "
+          (loop for board in boards
+                for i from 0
+                unless (zerop i)
+                do (cl-who:str " | ")
+                do (cl-who:htm (:a :href (format nil "/~a/" board) (cl-who:esc board))))
+          " ]"))))
+
+(defmacro layout (title class theme &body body)
   `(cl-who:with-html-output-to-string (s nil :prologue "<!DOCTYPE html>" :indent t)
      (:html
       (:head
@@ -14,8 +32,10 @@
        (:meta :name "viewport" :content "width=device-width, initial-scale=1.0")
        (:title (cl-who:esc ,title))
        (:link :rel "icon" :href "/static/favicon.ico" :type "image/png")
-       (:link :rel "stylesheet" :href "/static/styles/default.css" :type "text/css"))
+       (:link :rel "stylesheet" :href (format nil "/static/styles/~a.css" (or ,theme "default")) :type "text/css"))
       (:body :class ,class
+             (cl-who:str (render-boards-header))
+             (:hr)
              (cl-who:str (progn ,@body))))))
 
 (defun render-menu (board selected)
@@ -35,7 +55,7 @@
         " - "
         (:a :href (format nil "/~a/preferences" board) "preferences")
         " - "
-        (:a :href "/static/" "?"))))
+        (:a :href "/" "?"))))
 
 (defun render-thread-form (board)
   (cl-who:with-html-output-to-string (s nil :indent t)
@@ -60,17 +80,17 @@
           (cl-ppcre:regex-replace-all
            "(?s)```\\n*(.*?)\\n*```"
            processed
-           (lambda (match &rest registers)
-             (declare (ignore match))
-             (let* ((content (first registers))
-                    (placeholder (format nil code-block-placeholder-format (incf placeholder-idx))))
-               (push (cons placeholder content) code-blocks)
-               placeholder))))
+           (lambda (match-string &optional content &rest others)
+             (declare (ignore match-string others))
+             (let* ((placeholder (format nil code-block-placeholder-format (incf placeholder-idx))))
+               (push (cons placeholder (or content "")) code-blocks)
+               placeholder))
+           :simple-calls t))
 
-    ;; 2. Format inline quotes (lines starting with >)
+    ;; 2. Format inline quotes (lines starting with > but not >>)
     (setf processed
           (cl-ppcre:regex-replace-all
-           "(?m)^&gt;\\s*(.*?)$"
+           "(?m)^&gt;(?!&gt;)\\s*(.*?)$"
            processed
            "<blockquote>\\1</blockquote>"))
 
@@ -107,19 +127,26 @@
           (cl-ppcre:regex-replace-all
            "&gt;&gt;(\\d+)"
            processed
-           (lambda (match &rest registers)
-             (declare (ignore match))
-             (let ((num (first registers)))
-               (if thread-id
-                   (format nil "<a href=\"#t~ap~a\">&gt;&gt;~a</a>" thread-id num num)
-                   (format nil "<a href=\"#t~a\">&gt;&gt;~a</a>" num num))))))
+           (lambda (match-string &optional num &rest others)
+             (declare (ignore match-string others))
+             (if thread-id
+                 (format nil "<a href=\"#t~ap~a\">&gt;&gt;~a</a>" thread-id num num)
+                 (format nil "<a href=\"#t~a\">&gt;&gt;~a</a>" num num)))
+           :simple-calls t))
 
     ;; 8. Format URLs
     (setf processed
           (cl-ppcre:regex-replace-all
-           "https?://[\\w\\-\\.\\/\\?\\=\\&\\%\\#]+"
+           "https?://[\\w\\-\\.\\/\\?\\=\\&\\%\\#\\+]+"
            processed
            "<a href=\"\\&\" target=\"_blank\">\\&</a>"))
+
+    ;; Convert direct image links (which are now inside <a> tags) into image previews
+    (setf processed
+          (cl-ppcre:regex-replace-all
+           "<a href=\"(https?://[\\w\\-\\.\\/\\?\\=\\&\\%\\#\\+]+\\.(?:png|jpg|jpeg|gif|webp|bmp))\" target=\"_blank\">.*?</a>"
+           processed
+           "<br /><a href=\"\\1\" target=\"_blank\"><img src=\"\\1\" style=\"max-width:300px; max-height:300px; display:block; margin:0.5em 0;\" alt=\"preview\" /></a><br />"))
 
     ;; 9. Line breaks and paragraphs
     ;; Normalize line endings and split paragraphs
@@ -150,7 +177,10 @@
               (cl-ppcre:regex-replace-all
                placeholder
                processed
-               (format nil "</p><pre>~a</pre><p>" content)))))
+               (lambda (match-string &optional regs)
+                 (declare (ignore match-string regs))
+                 (format nil "</p><pre>~a</pre><p>" content))
+               :simple-calls t))))
 
     ;; Clean up empty paragraphs generated by block layout shifts
     (setf processed
@@ -203,8 +233,8 @@
        (:dd (cl-who:str (render-post-form board thread-id))))
       (:hr))))
 
-(defun render-index (board threads)
-  (layout (format nil "/~a/ - SchemeBBS" board) nil
+(defun render-index (board threads &optional theme)
+  (layout (format nil "/~a/ - SchemeBBS" board) nil theme
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:h1 (cl-who:esc board))
       (cl-who:str (render-menu board "frontpage"))
@@ -216,8 +246,8 @@
       (:hr)
       (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
-(defun render-list (board threads)
-  (layout (format nil "/~a/ - SchemeBBS" board) nil
+(defun render-list (board threads &optional theme)
+  (layout (format nil "/~a/ - SchemeBBS" board) nil theme
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:h1 (cl-who:esc board))
       (cl-who:str (render-menu board "thread list"))
@@ -240,7 +270,7 @@
       (:hr)
       (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
-(defun render-thread (board thread-id thread-data &optional range-string)
+(defun render-thread (board thread-id thread-data &optional range-string theme)
   (let* ((raw-thread (if (and (consp thread-data)
                              (consp (car thread-data))
                              (consp (caar thread-data)))
@@ -270,7 +300,7 @@
                                              do (setf (gethash id allowed-ids) t))))))))
                             (lambda (id) (gethash id allowed-ids)))
                           (lambda (id) (declare (ignore id)) t))))
-    (layout (format nil "/~a/ - SchemeBBS" board) "thread"
+    (layout (format nil "/~a/ - SchemeBBS" board) "thread" theme
       (cl-who:with-html-output-to-string (s nil :indent t)
         (:h1 (cl-who:esc board))
         (cl-who:str (render-menu board "thread"))
@@ -296,3 +326,22 @@
          (:dd (cl-who:str (render-post-form board thread-id))))
         (:hr)
         (:p :class "footer" "SchemeBBS Common Lisp port")))))
+
+(defun render-preferences (board &optional theme)
+  (layout (format nil "/~a/ - Preferences" board) "preferences" theme
+    (cl-who:with-html-output-to-string (s nil :indent t)
+      (:h1 (cl-who:esc board))
+      (cl-who:str (render-menu board "preferences"))
+      (:hr)
+      (:h2 "Preferences")
+      (:form :action (format nil "/~a/preferences" board) :method "POST"
+             (:p (:label :for "theme" "Choose theme: ")
+                 (:select :name "theme" :id "theme"
+                          (dolist (item '("default" "classic" "dark" "mona" "no"))
+                            (cl-who:htm
+                             (:option :value item
+                                      :selected (and theme (string= theme item))
+                                      (cl-who:str item))))))
+             (:p (:input :type "submit" :value "Save Preferences")))
+      (:hr)
+      (:p :class "footer" "SchemeBBS Common Lisp port"))))
