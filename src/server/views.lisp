@@ -16,7 +16,7 @@
        (:link :rel "stylesheet" :href "/static/core.css"))
       (:body
        (:div :class "content"
-             (raw (progn ,@body)))))))
+             (:raw (progn ,@body)))))))
 
 (defun render-index (board threads)
   (declare (ignore threads))
