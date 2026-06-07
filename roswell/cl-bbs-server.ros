@@ -25,4 +25,4 @@ exec ros -Q -- $0 "$@"
                (lambda (env) (cl-bbs/handlers:handle-request env)))))
 
     (format t "Starting cl-bbs on port ~a~%" port)
-    (clack:clackup app :port port :server :hunchentoot :use-thread nil)))
+    (clack:clackup app :address "0.0.0.0" :port port :server :hunchentoot :use-thread nil)))
