@@ -53,7 +53,7 @@
   :depends-on ("clack"
                "clack-handler-hunchentoot"
                "ningle"
-               "spinneret"
+               "cl-who"
                "cl-ppcre"
                "local-time"
                "yason"

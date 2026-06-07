@@ -1,12 +1,11 @@
-cl-ppcre
-local-time
-clack
-hunchentoot
-ningle
-spinneret
-yason
-lack
-lack-middleware-static
-bordeaux-threads
-parachute
-dexador
+github cl-ppcre edicl/cl-ppcre
+ql local-time
+ql clack
+ql hunchentoot
+ql ningle
+ql cl-who
+ql yason
+ql lack
+ql bordeaux-threads
+ql parachute
+ql dexador

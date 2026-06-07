@@ -1,5 +1,5 @@
 (defpackage :cl-bbs/views
-  (:use :cl :spinneret :cl-bbs/models)
+  (:use :cl :cl-who :cl-bbs/models)
   (:export #:render-index
            #:render-list
            #:render-thread))
@@ -7,93 +7,220 @@
 (in-package :cl-bbs/views)
 
 (defmacro layout (title class &body body)
-  `(with-html-string
-     (:doctype)
+  `(cl-who:with-html-output-to-string (s nil :prologue "<!DOCTYPE html>" :indent t)
      (:html
       (:head
        (:meta :charset "utf-8")
        (:meta :name "viewport" :content "width=device-width, initial-scale=1.0")
-       (:title ,title)
+       (:title (cl-who:esc ,title))
        (:link :rel "icon" :href "/static/favicon.ico" :type "image/png")
        (:link :rel "stylesheet" :href "/static/styles/default.css" :type "text/css"))
       (:body :class ,class
-             (:raw (progn ,@body))))))
+             (cl-who:str (progn ,@body))))))
 
 (defun render-menu (board selected)
-  (with-html-string
+  (cl-who:with-html-output-to-string (s nil :indent t)
     (:p :class "nav"
         (if (string= selected "frontpage")
-            "frontpage"
-            (:a :href (format nil "/~a" board) "frontpage"))
+            (cl-who:str "frontpage")
+            (cl-who:htm (:a :href (format nil "/~a" board) "frontpage")))
         " - "
         (if (string= selected "thread list")
-            "thread list"
-            (:a :href (format nil "/~a/list" board) "thread list"))
+            (cl-who:str "thread list")
+            (cl-who:htm (:a :href (format nil "/~a/list" board) "thread list")))
         " - "
         (if (string= selected "frontpage")
-            (:a :href "#newthread" "new thread")
-            (:a :href (format nil "/~a#newthread" board) "new thread"))
+            (cl-who:htm (:a :href "#newthread" "new thread"))
+            (cl-who:htm (:a :href (format nil "/~a#newthread" board) "new thread")))
         " - "
         (:a :href (format nil "/~a/preferences" board) "preferences")
         " - "
         (:a :href "/static/" "?"))))
 
 (defun render-thread-form (board)
-  (with-html-string
+  (cl-who:with-html-output-to-string (s nil :indent t)
     (:h2 :id "newthread" "New thread")
     (:form :action (format nil "/~a/post" board) :method "POST"
            (:p (:input :type "text" :name "titulus" :size 35 :placeholder "Headline"))
            (:p (:textarea :name "epistula" :rows 5 :cols 50 :placeholder "Message"))
-           (:p (:input :type "text" :name "ornamentum" :size 35 :placeholder "hash"))
            (:p (:input :type "text" :name "name" :style "display:none")
                (:input :type "text" :name "message" :style "display:none")
                (:input :type "submit" :value "Post")))))
                
-(defun format-text (text)
-  ;; Placeholder for future BBCode styling. Returning text unmodified for now.
-  text)
+(defun format-text (text &optional thread-id)
+  (let* ((escaped (cl-who:escape-string text))
+         ;; 1. Extract code blocks
+         (code-blocks '())
+         (code-block-placeholder-format "<!--CODEBLOCK-PLACEHOLDER-~a-->")
+         (placeholder-idx 0)
+         (processed escaped))
+    
+    ;; Replace triple backtick blocks with placeholders
+    (setf processed
+          (cl-ppcre:regex-replace-all
+           "(?s)```\\n*(.*?)\\n*```"
+           processed
+           (lambda (match &rest registers)
+             (declare (ignore match))
+             (let* ((content (first registers))
+                    (placeholder (format nil code-block-placeholder-format (incf placeholder-idx))))
+               (push (cons placeholder content) code-blocks)
+               placeholder))))
+
+    ;; 2. Format inline quotes (lines starting with >)
+    (setf processed
+          (cl-ppcre:regex-replace-all
+           "(?m)^&gt;\\s*(.*?)$"
+           processed
+           "<blockquote>\\1</blockquote>"))
+
+    ;; 3. Format bold (**text**)
+    (setf processed
+          (cl-ppcre:regex-replace-all
+           "\\*\\*(.*?)\\*\\*"
+           processed
+           "<b>\\1</b>"))
+
+    ;; 4. Format italic (__text__)
+    (setf processed
+          (cl-ppcre:regex-replace-all
+           "__(.*?)__"
+           processed
+           "<i>\\1</i>"))
+
+    ;; 5. Format monospace (`text`)
+    (setf processed
+          (cl-ppcre:regex-replace-all
+           "`([^`]+)`"
+           processed
+           "<code>\\1</code>"))
+
+    ;; 6. Format spoiler (~~text~~)
+    (setf processed
+          (cl-ppcre:regex-replace-all
+           "~~(.*?)~~"
+           processed
+           "<del>\\1</del>"))
+
+    ;; 7. Format post references (>>7)
+    (setf processed
+          (cl-ppcre:regex-replace-all
+           "&gt;&gt;(\\d+)"
+           processed
+           (lambda (match &rest registers)
+             (declare (ignore match))
+             (let ((num (first registers)))
+               (if thread-id
+                   (format nil "<a href=\"#t~ap~a\">&gt;&gt;~a</a>" thread-id num num)
+                   (format nil "<a href=\"#t~a\">&gt;&gt;~a</a>" num num))))))
+
+    ;; 8. Format URLs
+    (setf processed
+          (cl-ppcre:regex-replace-all
+           "https?://[\\w\\-\\.\\/\\?\\=\\&\\%\\#]+"
+           processed
+           "<a href=\"\\&\" target=\"_blank\">\\&</a>"))
+
+    ;; 9. Line breaks and paragraphs
+    ;; Normalize line endings and split paragraphs
+    (setf processed
+          (cl-ppcre:regex-replace-all
+           "\\r\\n"
+           processed
+           (string #\Newline)))
+    (setf processed
+          (cl-ppcre:regex-replace-all
+           "\\n\\n+"
+           processed
+           "</p><p>"))
+    (setf processed
+          (cl-ppcre:regex-replace-all
+           "\\n"
+           processed
+           "<br />"))
+
+    ;; Wrap the whole thing in a paragraph if not empty
+    (setf processed (format nil "<p>~a</p>" processed))
+
+    ;; 10. Restore code blocks inside `<pre>` tags
+    (dolist (pair code-blocks)
+      (let ((placeholder (car pair))
+            (content (cdr pair)))
+        (setf processed
+              (cl-ppcre:regex-replace-all
+               placeholder
+               processed
+               (format nil "</p><pre>~a</pre><p>" content)))))
+
+    ;; Clean up empty paragraphs generated by block layout shifts
+    (setf processed
+          (cl-ppcre:regex-replace-all
+           "<p>\\s*</p>"
+           processed
+           ""))
+
+    processed))
+
+(defun render-post-form (board thread-id)
+  (cl-who:with-html-output-to-string (s nil :indent t)
+    (:form :action (format nil "/~a/~a/post" board thread-id) :method "POST"
+           (:p (:textarea :name "epistula" :rows 8 :cols 78 :placeholder "Message")
+               (:br)
+               (:input :type "text" :name "name" :class "name" :style "display:none")
+               (:input :type "text" :name "message" :class "message" :style "display:none")
+               (:input :type "submit" :value "POST")))))
 
 (defun render-frontpage-thread (board thread-data index)
   (let* ((thread-id (car thread-data))
          (props (cdr thread-data))
          (headline (cdr (assoc 'cl-bbs/models::headline props)))
          (posts (second (assoc 'cl-bbs/models::posts props)))
+         (next-post-number (if posts (1+ (reduce #'max posts :key #'car :initial-value 0)) 1))
          (truncated (cdr (assoc 'cl-bbs/models::truncated props))))
     (declare (ignore truncated))
-    (with-html-string
+    (cl-who:with-html-output-to-string (s nil :indent t)
       (:pre :class "jump"
             (:a :id (format nil "d~a" index)
                 :href (if (= index 10) "#d1" (format nil "#d~a" (1+ index))) "↓")
-            (:raw "&nbsp;"))
-      (:h2 (:a :href (format nil "/~a/~a" board thread-id) headline))
-      (loop for post in posts
-            for post-id = (car post)
-            for post-data = (cdr post)
-            for content = (cdr (assoc 'cl-bbs/models::content post-data))
-            for date = (cdr (assoc 'cl-bbs/models::date post-data))
-            do (:p (:strong "Anonymous") " " date " " (:a :href (format nil "/~a/~a#~a" board thread-id post-id) (format nil "No.~a" post-id))
-                   (:raw (format nil "<br>~a<br>" (format-text content)))
-                   (:raw (render-post-form board thread-id post-id))))
+            (cl-who:str "&nbsp;"))
+      (:h2 (:a :href (format nil "/~a/~a" board thread-id) (cl-who:esc headline)))
+      (:dl
+       (loop for post in posts
+             for post-id = (car post)
+             for post-data = (cdr post)
+             for content = (cdr (assoc 'cl-bbs/models::content post-data))
+             for date = (cdr (assoc 'cl-bbs/models::date post-data))
+             do (cl-who:htm
+                 (:dt (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
+                          :id (format nil "t~ap~a" thread-id post-id)
+                          (cl-who:str (format nil "~a" post-id)))
+                      " "
+                      (:samp (cl-who:esc date)))
+                 (:dd (cl-who:str (format-text content thread-id)))))
+       (:dt (:a :href (format nil "#t~ap~a" thread-id next-post-number)
+                :id (format nil "t~ap~a" thread-id next-post-number)
+                (cl-who:str (format nil "~a" next-post-number))))
+       (:dd (cl-who:str (render-post-form board thread-id))))
       (:hr))))
 
 (defun render-index (board threads)
   (layout (format nil "/~a/ - SchemeBBS" board) nil
-    (with-html-string
-      (:h1 board)
-      (:raw (render-menu board "frontpage"))
+    (cl-who:with-html-output-to-string (s nil :indent t)
+      (:h1 (cl-who:esc board))
+      (cl-who:str (render-menu board "frontpage"))
       (:hr)
       (loop for t-data in threads
             for i from 1
-            do (:raw (render-frontpage-thread board t-data i)))
-      (:raw (render-thread-form board))
+            do (cl-who:htm (cl-who:str (render-frontpage-thread board t-data i))))
+      (cl-who:str (render-thread-form board))
       (:hr)
       (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
 (defun render-list (board threads)
   (layout (format nil "/~a/ - SchemeBBS" board) nil
-    (with-html-string
-      (:h1 board)
-      (:raw (render-menu board "thread list"))
+    (cl-who:with-html-output-to-string (s nil :indent t)
+      (:h1 (cl-who:esc board))
+      (cl-who:str (render-menu board "thread list"))
       (:hr)
       (:table :summary "Thread list"
               (:thead (:tr (:th "#") (:th "headline") (:th "posts") (:th "last update")))
@@ -105,45 +232,67 @@
                                (headline (cdr (assoc 'cl-bbs/models::headline props)))
                                (messages (cdr (assoc 'cl-bbs/models::messages props)))
                                (date (cdr (assoc 'cl-bbs/models::date props))))
-                          (:tr (:td i)
-                               (:td (:a :href (format nil "/~a/~a" board thread-id) headline))
-                               (:td messages)
-                               (:td (:samp date)))))))
+                          (cl-who:htm
+                           (:tr (:td (cl-who:str (format nil "~a" i)))
+                                (:td (:a :href (format nil "/~a/~a" board thread-id) (cl-who:esc headline)))
+                                (:td (cl-who:str (format nil "~a" messages)))
+                                (:td (:samp (cl-who:esc date)))))))))
       (:hr)
       (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
-(defun render-post-form (board thread-id &optional post-id)
-  (with-html-string
-    (:dl
-     (:form :action (format nil "/~a/~a/post" board thread-id) :method "POST"
-            (:dt (:textarea :name "epistula" :rows 5 :cols 50 :placeholder "Message"))
-            (:dd (:input :type "text" :name "ornamentum" :size 35 :placeholder "hash"))
-            (:dd (:input :type "text" :name "name" :style "display:none")
-                 (:input :type "text" :name "message" :style "display:none")
-                 (when post-id (:input :type "hidden" :name "target_post" :value post-id))
-                 (:input :type "submit" :value "Reply"))))))
-
-(defun render-thread (board thread-id thread-data)
-  (let* ((raw-thread (if (and (consp thread-data) (consp (car thread-data))) (car thread-data) thread-data))
+(defun render-thread (board thread-id thread-data &optional range-string)
+  (let* ((raw-thread (if (and (consp thread-data)
+                             (consp (car thread-data))
+                             (consp (caar thread-data)))
+                         (car thread-data)
+                         thread-data))
          (headline (if (consp (car raw-thread)) (cdr (assoc 'cl-bbs/models::headline raw-thread)) (cdr (assoc 'cl-bbs/models::headline (list raw-thread)))))
          (posts-assoc (if (consp (car raw-thread)) (assoc 'cl-bbs/models::posts raw-thread) (cadr thread-data)))
          (posts-list (if (and posts-assoc (listp (cdr posts-assoc)) (not (keywordp (cdr posts-assoc))))
                          (if (listp (cadr posts-assoc)) (cadr posts-assoc) (cdr posts-assoc))
                          (cdr posts-assoc)))
-         (posts (if (listp (car posts-list)) posts-list (list posts-list))))
+         (posts (if (listp (car posts-list)) posts-list (list posts-list)))
+         (next-post-number (if posts (1+ (reduce #'max posts :key #'car :initial-value 0)) 1))
+         (filter-func (if (and range-string (string/= range-string ""))
+                          (let ((allowed-ids (make-hash-table :test #'eql)))
+                            (dolist (part (cl-ppcre:split "," range-string))
+                              (let ((subparts (cl-ppcre:split "-" part)))
+                                (cond
+                                  ((= (length subparts) 1)
+                                   (let ((id (parse-integer (first subparts) :junk-allowed t)))
+                                     (when id
+                                       (setf (gethash id allowed-ids) t))))
+                                  ((= (length subparts) 2)
+                                   (let ((start (parse-integer (first subparts) :junk-allowed t))
+                                         (end (parse-integer (second subparts) :junk-allowed t)))
+                                     (when (and start end (<= start end))
+                                       (loop for id from start to end
+                                             do (setf (gethash id allowed-ids) t))))))))
+                            (lambda (id) (gethash id allowed-ids)))
+                          (lambda (id) (declare (ignore id)) t))))
     (layout (format nil "/~a/ - SchemeBBS" board) "thread"
-      (with-html-string
-        (:raw (render-menu board "thread"))
-        (:h1 headline)
-        (loop for post in posts
-              for post-id = (car post)
-              for post-data = (cdr post)
-              for content = (cdr (assoc 'cl-bbs/models::content post-data))
-              for date = (cdr (assoc 'cl-bbs/models::date post-data))
-              do (:p (:strong "Anonymous") " " date " " (:a :name (format nil "~a" post-id) :href (format nil "/~a/~a#~a" board thread-id post-id) (format nil "No.~a" post-id))
-                     (:raw (format nil "<br>~a<br>" (format-text content)))
-                     (:raw (render-post-form board thread-id post-id))))
+      (cl-who:with-html-output-to-string (s nil :indent t)
+        (:h1 (cl-who:esc board))
+        (cl-who:str (render-menu board "thread"))
         (:hr)
-        (:raw (render-post-form board thread-id))
+        (:h2 (cl-who:esc headline))
+        (:dl
+         (loop for post in posts
+               for post-id = (car post)
+               for post-data = (cdr post)
+               for content = (cdr (assoc 'cl-bbs/models::content post-data))
+               for date = (cdr (assoc 'cl-bbs/models::date post-data))
+               when (funcall filter-func post-id)
+               do (cl-who:htm
+                   (:dt (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
+                            :id (format nil "t~ap~a" thread-id post-id)
+                            (cl-who:str (format nil "~a" post-id)))
+                        " "
+                        (:samp (cl-who:esc date)))
+                   (:dd (cl-who:str (format-text content thread-id)))))
+         (:dt (:a :href (format nil "#t~ap~a" thread-id next-post-number)
+                  :id (format nil "t~ap~a" thread-id next-post-number)
+                  (cl-who:str (format nil "~a" next-post-number))))
+         (:dd (cl-who:str (render-post-form board thread-id))))
         (:hr)
         (:p :class "footer" "SchemeBBS Common Lisp port")))))
