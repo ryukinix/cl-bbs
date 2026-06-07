@@ -107,10 +107,36 @@
       (:hr)
       (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
-(defun render-thread (board thread posts)
-  (declare (ignore posts))
-  (layout (format nil "/~a/ - SchemeBBS" board) "thread"
-    (with-html-string
-      (:raw (render-menu board "thread"))
-      (:h1 (format nil "Thread ~a TODO" thread))
-      (:p "Posts TODO"))))
+(defun render-post-form (board thread-id)
+  (with-html-string
+    (:dl
+     (:form :action (format nil "/~a/~a/post" board thread-id) :method "POST"
+            (:dt (:textarea :name "epistula" :rows 5 :cols 50 :placeholder "Message"))
+            (:dd (:input :type "text" :name "ornamentum" :size 35 :placeholder "hash"))
+            (:dd (:input :type "text" :name "name" :style "display:none")
+                 (:input :type "text" :name "message" :style "display:none")
+                 (:input :type "submit" :value "Reply"))))))
+
+(defun render-thread (board thread-id thread-data)
+  (let* ((raw-thread (if (and (consp thread-data) (consp (car thread-data))) (car thread-data) thread-data))
+         (headline (if (consp (car raw-thread)) (cdr (assoc 'cl-bbs/models::headline raw-thread)) (cdr (assoc 'cl-bbs/models::headline (list raw-thread)))))
+         (posts-assoc (if (consp (car raw-thread)) (assoc 'cl-bbs/models::posts raw-thread) (cadr thread-data)))
+         (posts-list (if (and posts-assoc (listp (cdr posts-assoc)) (not (keywordp (cdr posts-assoc))))
+                         (if (listp (cadr posts-assoc)) (cadr posts-assoc) (cdr posts-assoc))
+                         (cdr posts-assoc)))
+         (posts (if (listp (car posts-list)) posts-list (list posts-list))))
+    (layout (format nil "/~a/ - SchemeBBS" board) "thread"
+      (with-html-string
+        (:raw (render-menu board "thread"))
+        (:h1 headline)
+        (loop for post in posts
+              for post-id = (car post)
+              for post-data = (cdr post)
+              for content = (cdr (assoc 'cl-bbs/models::content post-data))
+              for date = (cdr (assoc 'cl-bbs/models::date post-data))
+              do (:p (:strong "Anonymous") " " date " " (:a :name (format nil "~a" post-id) :href (format nil "/~a/~a#~a" board thread-id post-id) (format nil "No.~a" post-id))
+                     (:raw (format nil "<br>~a<br>" content))))
+        (:hr)
+        (:raw (render-post-form board thread-id))
+        (:hr)
+        (:p :class "footer" "SchemeBBS Common Lisp port")))))
