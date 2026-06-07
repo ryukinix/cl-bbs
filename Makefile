@@ -27,8 +27,8 @@ docker-shell: docker-build
 	docker run --rm -it --entrypoint=/bin/bash $(DOCKER_IMG)
 
 docker-run: docker-build
-	# Note: default SchemeBBS port is 6666.
-	docker run --rm -it -p 6666:6666 -v $(PWD)/data:/cl-bbs/data $(DOCKER_IMG)
+	# Note: default SchemeBBS port is 8222.
+	docker run --rm -it -p 8222:8222 -v $(PWD)/data:/cl-bbs/data $(DOCKER_IMG)
 
 .PHONY: check docker-check docker-build docker-lint lint lint-fix
 

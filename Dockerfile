@@ -13,5 +13,5 @@ ENV SBBS_DATADIR=/cl-bbs/data/
 ENV SBBS_STATIC_DIR=/cl-bbs/src/static/
 ENV SBBS_INDEX_FILE=/cl-bbs/src/static/index.html
 RUN ros build roswell/cl-bbs-server.ros
-EXPOSE 6666
+EXPOSE 8222
 ENTRYPOINT ["/cl-bbs/roswell/cl-bbs-server"]

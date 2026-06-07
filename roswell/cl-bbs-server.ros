@@ -17,8 +17,8 @@ exec ros -Q -- $0 "$@"
 (defun main (&rest argv)
   (declare (ignorable argv))
   (let* ((port (or (and argv (parse-integer (car argv) :junk-allowed t))
-                  (parse-integer (or (uiop:getenv "PORT") "6666") :junk-allowed t)
-                  6666))
+                  (parse-integer (or (uiop:getenv "PORT") "8222") :junk-allowed t)
+                  8222))
          (app (lack:builder
                (:static :path "/static/"
                         :root (pathname (or (uiop:getenv "SBBS_STATIC_DIR")
