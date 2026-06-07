@@ -1,0 +1,24 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  #+quicklisp(ql:quickload '() :silent t)
+  )
+
+(defpackage :ros.script.cl-bbs-server.3908865487
+  (:use :cl))
+(in-package :ros.script.cl-bbs-server.3908865487)
+
+(ql:quickload :cl-bbs/server)
+
+(defun main (&rest argv)
+  (declare (ignorable argv))
+  (let ((port (or (and argv (parse-integer (car argv) :junk-allowed t))
+                  (parse-integer (or (uiop:getenv "PORT") "8080") :junk-allowed t)
+                  8080)))
+    (format t "Starting cl-bbs on port ~a~%" port)
+    (uiop:symbol-call :cl-bbs/server :start-app port)
+    (loop do (sleep 1000))))
