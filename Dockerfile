@@ -10,5 +10,5 @@ COPY ./roswell roswell
 ARG APP_VERSION
 ENV APP_VERSION=$APP_VERSION
 RUN ros build roswell/cl-bbs-server.ros
-EXPOSE 8080
+EXPOSE 6666
 ENTRYPOINT ["/cl-bbs/roswell/cl-bbs-server"]
