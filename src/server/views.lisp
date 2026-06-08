@@ -231,7 +231,7 @@
             (:a :id (format nil "d~a" index)
                 :href (if (= index 10) "#d1" (format nil "#d~a" (1+ index))) "↓")
             (cl-who:str "&nbsp;"))
-      (let ((heading-style (if (string= theme "random")
+      (let ((heading-style (if (string= theme "colored")
                                (format nil "border-left: 5px solid hsl(~D, 80%, 45%); padding-left: 10px; margin-left: 2%;" (get-hash-hue thread-id))
                                "")))
         (cl-who:htm
@@ -243,7 +243,7 @@
              for post-data = (cdr post)
              for content = (cdr (assoc 'cl-bbs/models::content post-data))
              for date = (cdr (assoc 'cl-bbs/models::date post-data))
-             do (let ((post-style (if (string= theme "random")
+             do (let ((post-style (if (string= theme "colored")
                                       (let ((hue (get-hash-hue post-id)))
                                         (format nil "background-color: hsl(~D, 85%, 96%); border-left: 4px solid hsl(~D, 85%, 45%); padding: 0.5em 1em; margin: 0.3em 2% 1.2em 2%; border-radius: 0 4px 4px 0;" hue hue))
                                       "")))
@@ -332,7 +332,7 @@
         (:h1 (cl-who:esc board))
         (cl-who:str (render-menu board "thread"))
         (:hr)
-        (let ((heading-style (if (string= theme "random")
+        (let ((heading-style (if (string= theme "colored")
                                  (format nil "border-left: 5px solid hsl(~D, 80%, 45%); padding-left: 10px;" (get-hash-hue thread-id))
                                  "")))
           (cl-who:htm
@@ -344,7 +344,7 @@
                for content = (cdr (assoc 'cl-bbs/models::content post-data))
                for date = (cdr (assoc 'cl-bbs/models::date post-data))
                when (funcall filter-func post-id)
-               do (let ((post-style (if (string= theme "random")
+               do (let ((post-style (if (string= theme "colored")
                                         (let ((hue (get-hash-hue post-id)))
                                           (format nil "background-color: hsl(~D, 85%, 96%); border-left: 4px solid hsl(~D, 85%, 45%); padding: 0.5em 1em; margin: 0.3em 0 1.2em 0; border-radius: 0 4px 4px 0;" hue hue))
                                         "")))
@@ -372,7 +372,7 @@
       (:form :action (format nil "/~a/preferences" board) :method "POST"
              (:p (:label :for "theme" "Choose theme: ")
                  (:select :name "theme" :id "theme"
-                          (dolist (item '("default" "dark" "no" "random"))
+                          (dolist (item '("default" "dark" "no" "colored"))
                             (cl-who:htm
                              (:option :value item
                                       :selected (and theme (string= theme item))
