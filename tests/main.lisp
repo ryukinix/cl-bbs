@@ -104,6 +104,12 @@
     (is = 200 (first res))
     (is equal "application/json" (getf (second res) :content-type)))
 
+  ;; 7b. GET about page /about
+  (let* ((env (list :path-info "/about" :request-method :get))
+         (res (cl-bbs/handlers:handle-request env)))
+    (is = 200 (first res))
+    (is equal "text/html; charset=utf-8" (getf (second res) :content-type)))
+
   ;; 8. GET Moderation Panel /admin (Unauthorized)
   (let* ((env (list :path-info "/admin" :request-method :get))
          (res (cl-bbs/handlers:handle-request env)))

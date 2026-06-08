@@ -93,47 +93,14 @@ function createBoard() {
   ((lambda (f) (f f))
    (lambda (f) (h (lambda (x) ((f f) x))))))</PRE></TD></TR></TBODY></TABLE>
 
-<H2>Alternate Access</H2>
-<P>If you'd like to, you can also visit this website anonymously via i2p: 
-<A href="http://7ubwrcixdcemzqwqzh2vaakjsnochj2biuzpo6dc2n4f7wqj4pua.b32.i2p">textboard.i2p</A></P>
-
 <H2>Source Code</H2>
 <P>Check the original draft of SchemeBBS at <A href="https://github.com/alyssa-p-hacker/SchemeBBS">github</A>. This Common Lisp port is fully refactored, robustly tested, and packaged with local sandbox package locks.</P>
-
-<H2>A Bit of History</H2>
-<P><DEL>/prog/</DEL> was a <A href="https://en.wikipedia.org/wiki/Textboard">textboard</A> about ``programming'', hosted at world4ch.org and later dis.4chan.org. It was an odd and fascinating place that went mostly unmoderated for years.  Unfortunately the owners were made to remember its existence thanks to imbecilic spammers; and without consideration for the small community that inhabited the place, the formers decided to pull the plug on a sad day of July 2014.  <P> If you weren't lucky enough to have been a part of it, an archive of all the posts is available at <A href="https://archive.org/details/prog-20140418.db">archive.org</A>.  There's a <A href="http://world4search.readsicp.org/">search engine</A> for this archive which has also been entirely restored as web pages at <A href="https://archive.tinychan.org/prog/">tinychan.org</A>.</P>
-<P>Back then, a somewhat recurrent joke was that the BBS script, <CODE>shiichan</CODE>, should be rewritten in Scheme. Alyssa P. Hacker fulfilled this dream in MIT Scheme. Our project provides a complete, production-grade Common Lisp port of this textboard engine, preserving all original aesthetics and capabilities.</P>
-
-<H2>More History</H2>
-<P>If you're interested in the history of textboards as a whole, here are a few interesting reads: </P>
-<UL>
-<LI><A href="https://wakaba.c3.cx/shii/shiichan">Shii's blurb</A></LI>
-<LI><A href="http://tanasinn.info/wiki/Main_Page">Tanasinn wiki</A></LI>
-<LI><A href="https://github.com/bibanon/bibanon/wiki/2channel">bibanon</A></LI>
-</UL>
-
-<H2>Other Textboard Scripts</H2>
-<UL>
-<LI><A href="https://github.com/j416dy/2ch">bbs.cgi</A> - The original <A href="https://5ch.net/">2ch</A> Perl script</LI>
-<LI><A href="https://wakaba.c3.cx/shii/shiichan3960.zip">Shiichan</A> - The PHP script that was used at world4ch</LI>
-<LI><A href="http://wakaba.c3.cx/s/web/wakaba_kareha">Kareha</A> - Popular Perl script used by <A href="http://4-ch.net/4ch">4-ch.net</A> among others</LI>
-<LI><A href="http://tanami.org/pub/software/TrueScript/Tablecat.zip">Tablecat</A> - Tablecat's Perl script (the site is currently offline)</LI>
-<LI><A href="https://github.com/desuwa/hivebbs">HiveBBS</A> - A Ruby script seen at <A href="http://bbs.neet.tv/">bbs.neet.tv</A></LI>
-<LI><A href="https://github.com/z411/weabot">Weabot</A> - Python script used by Bienvenido a Internet</LI>
-</UL>
 
 <H2>Software Stack</H2>
 <P>cl-bbs is written in Common Lisp (running on SBCL), Cloudflare is used as a CDN/reverse proxy and the whole system runs on Docker containers. There's no SQL database; messages are stored as Lisp S-expression objects in plain text files. This stack is extremely robust. This codebase was adapted from the original MIT Scheme <A href="https://github.com/alyssa-p-hacker/SchemeBBS">SchemeBBS</A> as a high-quality Common Lisp port, with full credit given to its original author.</P>
 <P><A href="https://sbcl.org"><IMG src="/static/img/mit-scheme.png" alt="SBCL Common Lisp" style="height:42px; width:auto; margin-right:10px;"></A><A href="https://www.gnu.org/software/mit-scheme/"><IMG src="/static/img/gnu.png" alt="GNU logo" style="height:42px; width:auto; margin-right:10px;"></A><A href="https://www.cloudflare.com"><IMG src="/static/img/nginx.png" alt="Cloudflare logo" style="height:42px; width:auto; margin-right:10px;"></A><A href="http://freebsd.org"><IMG src="/static/img/freebsd.png" alt="FreeBSD logo" style="height:42px; width:auto;"></A></P>
 
-<H2>Bonus Track</H2>
-<P>Listening to this tune will make you enjoy writing Common Lisp code.</P>
-<P><A href="/static/img/abelson-stole-the-precious-course-mit-version.webm"><IMG src="/static/img/snake.png" alt="The SICP snake"></A></P>
-<P style="font-size: 0.9em; text-align: center; margin-top: 2em;"><A href="/admin">Administration Panel</A></P>
 <HR>
-<P>
-<A href="https://validator.w3.org/check?uri=referer"><IMG src="/static/img/valid-html.png" alt="Valid HTML"></A>
-<A href="https://www.eff.org/deeplinks/2013/12/nsa-turns-cookies-and-more-surveillance-beacons"><IMG src="/static/img/nocookie.png" alt="This site doesn't use tracking cookies" title="No Cookies!"></A>
-<A href="https://www.gnu.org/philosophy/javascript-trap.en.html"><IMG src="/static/img/nojs.png" alt="No non-free Javascript" title="No Javascript!"></A></P>
+<P style="font-size: 0.9em; text-align: center; margin-top: 2em;"><A href="/about">About</A> - <A href="/admin">Administration Panel</A></P>
 </BODY>
 </HTML>

@@ -246,6 +246,13 @@
                      (,dynamic-html)))
              `(200 (:content-type "text/plain") ("SchemeBBS clone root")))))
 
+      ((string= path-info "/about")
+       (let ((about-file (pathname (merge-pathnames "src/static/about.html" (asdf:system-source-directory :cl-bbs/server)))))
+         (if (probe-file about-file)
+             `(200 (:content-type "text/html; charset=utf-8")
+                   (,(uiop:read-file-string about-file)))
+             `(404 (:content-type "text/plain") ("About page not found")))))
+
       ;; 1. GET /admin (Admin Control Panel)
       ((string= path-info "/admin")
        (if (not (authenticate-admin env))
