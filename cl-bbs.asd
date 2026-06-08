@@ -68,7 +68,8 @@
                              (:file "storage" :depends-on ("models"))
                              (:file "views" :depends-on ("models"))
                              (:file "handlers" :depends-on ("storage" "views"))
-                             (:file "main" :depends-on ("handlers" "storage"))))))
+                             (:file "main" :depends-on ("handlers" "storage"))
+                             (:file "admin" :depends-on ("storage"))))))
 
 (asdf:defsystem :cl-bbs
   :class cl-bbs/system:custom-system-class

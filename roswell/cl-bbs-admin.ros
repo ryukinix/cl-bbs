@@ -1,0 +1,23 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+
+(progn
+  (ros:ensure-asdf)
+  (let ((setup (or (probe-file (merge-pathnames ".qlot/setup.lisp" *default-pathname-defaults*))
+                   (and *load-truename* (probe-file (merge-pathnames "../.qlot/setup.lisp" *load-truename*))))))
+    (if setup
+        (load setup)
+        #+quicklisp(ql:quickload '() :silent t)))
+  )
+
+(defpackage :ros.script.cl-bbs-admin
+  (:use :cl))
+(in-package :ros.script.cl-bbs-admin)
+
+(ql:quickload :cl-bbs/server)
+
+(defun main (&rest argv)
+  (apply #'cl-bbs-admin:main argv))
