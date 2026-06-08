@@ -1,7 +1,7 @@
 DOCKER_IMG = cl-bbs
 APP_VERSION = $(shell git describe --tags 2> /dev/null || printf 0.1.0)
 VERSION := latest
-PUBLIC_IMG = lerax/$(DOCKER_IMG):$(VERSION)
+PUBLIC_IMG = ryukinix/$(DOCKER_IMG):$(VERSION)
 ROS_TEST_FLAGS = -e "(sb-ext:disable-debugger)" -s cl-bbs/tests
 
 lint:
@@ -30,7 +30,7 @@ docker-run: docker-build
 	# Note: default SchemeBBS port is 8222.
 	docker run --rm -it -p 8222:8222 -v $(PWD)/data:/cl-bbs/data $(DOCKER_IMG)
 
-.PHONY: check docker-check docker-build docker-lint lint lint-fix
+.PHONY: check docker-check docker-build docker-lint lint lint-fix publish
 
 check:
 	ros $(ROS_TEST_FLAGS) -e '(asdf:test-system :cl-bbs/tests)'
@@ -38,3 +38,10 @@ check:
 docker-check: docker-build
 	docker run --rm --entrypoint=ros -e DEBUG -e ACTIONS_STEP_DEBUG \
            $(DOCKER_IMG) $(ROS_TEST_FLAGS) -e '(asdf:test-system :cl-bbs/tests)'
+
+publish: docker-build
+	docker tag $(DOCKER_IMG) $(PUBLIC_IMG)
+	docker push $(PUBLIC_IMG)
+
+deploy: publish
+	ssh starfox -t deploy apply cl-bbs
