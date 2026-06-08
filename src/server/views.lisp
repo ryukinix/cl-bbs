@@ -3,9 +3,26 @@
   (:export #:render-index
            #:render-list
            #:render-thread
-           #:render-preferences))
+           #:render-preferences
+           #:render-moderation))
 
 (in-package :cl-bbs/views)
+
+(defmacro layout (title class theme &body body)
+  `(cl-who:with-html-output-to-string (s nil :prologue "<!DOCTYPE html>" :indent t)
+     (:html
+      (:head
+       (:meta :charset "utf-8")
+       (:meta :name "viewport" :content "width=device-width, initial-scale=1.0")
+       (:title (cl-who:esc ,title))
+       (:link :rel "manifest" :href "/manifest.json")
+       (:link :rel "icon" :href "/static/favicon.ico" :type "image/png")
+       (:link :rel "stylesheet" :href (format nil "/static/styles/~a.css" (or ,theme "default")) :type "text/css")
+       (:script "if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js'); }); }"))
+      (:body :class ,class
+             (cl-who:str (render-boards-header))
+             (:hr)
+             (cl-who:str (progn ,@body))))))
 
 (defun render-boards-header ()
   (let* ((sexp-dir (merge-pathnames "sexp/" cl-bbs/storage::*base-dir*))
@@ -15,7 +32,7 @@
                                paths)
                        #'string<)))
     (cl-who:with-html-output-to-string (s nil :indent t)
-      (:p :class "boards" :style "text-align: left; font-size: 0.9em; margin-bottom: 1em;"
+      (:p :class "boards" :style "text-align: left; font-size: 0.9em; margin: 0.5em 2% 1em 2%;"
           "[ "
           (loop for board in boards
                 for i from 0
@@ -23,20 +40,6 @@
                 do (cl-who:str " | ")
                 do (cl-who:htm (:a :href (format nil "/~a/" board) (cl-who:esc board))))
           " ]"))))
-
-(defmacro layout (title class theme &body body)
-  `(cl-who:with-html-output-to-string (s nil :prologue "<!DOCTYPE html>" :indent t)
-     (:html
-      (:head
-       (:meta :charset "utf-8")
-       (:meta :name "viewport" :content "width=device-width, initial-scale=1.0")
-       (:title (cl-who:esc ,title))
-       (:link :rel "icon" :href "/static/favicon.ico" :type "image/png")
-       (:link :rel "stylesheet" :href (format nil "/static/styles/~a.css" (or ,theme "default")) :type "text/css"))
-      (:body :class ,class
-             (cl-who:str (render-boards-header))
-             (:hr)
-             (cl-who:str (progn ,@body))))))
 
 (defun render-menu (board selected)
   (cl-who:with-html-output-to-string (s nil :indent t)
@@ -59,13 +62,14 @@
 
 (defun render-thread-form (board)
   (cl-who:with-html-output-to-string (s nil :indent t)
-    (:h2 :id "newthread" "New thread")
-    (:form :action (format nil "/~a/post" board) :method "POST"
-           (:p (:input :type "text" :name "titulus" :size 35 :placeholder "Headline"))
-           (:p (:textarea :name "epistula" :rows 5 :cols 50 :placeholder "Message"))
-           (:p (:input :type "text" :name "name" :style "display:none")
-               (:input :type "text" :name "message" :style "display:none")
-               (:input :type "submit" :value "Post")))))
+    (:div :class "newthread-form"
+          (:h2 :id "newthread" "New thread")
+          (:form :action (format nil "/~a/post" board) :method "POST"
+                 (:p (:input :type "text" :name "titulus" :size 35 :placeholder "Headline"))
+                 (:p (:textarea :name "epistula" :rows 5 :cols 50 :placeholder "Message" :onkeydown "if(event.ctrlKey && event.key === 'Enter') { this.form.submit(); }"))
+                 (:p (:input :type "text" :name "name" :style "display:none")
+                     (:input :type "text" :name "message" :style "display:none")
+                     (:input :type "submit" :value "Post"))))))
                
 (defun format-text (text &optional thread-id)
   (let* ((escaped (cl-who:escape-string text))
@@ -129,9 +133,10 @@
            processed
            (lambda (match-string &optional num &rest others)
              (declare (ignore match-string others))
-             (if thread-id
-                 (format nil "<a href=\"#t~ap~a\">&gt;&gt;~a</a>" thread-id num num)
-                 (format nil "<a href=\"#t~a\">&gt;&gt;~a</a>" num num)))
+             (let ((num-val (or num "")))
+               (if thread-id
+                   (format nil "<a href=\"#t~ap~a\">&gt;&gt;~a</a>" thread-id num-val num-val)
+                   (format nil "<a href=\"#t~a\">&gt;&gt;~a</a>" num-val num-val))))
            :simple-calls t))
 
     ;; 8. Format URLs
@@ -145,6 +150,13 @@
     (setf processed
           (cl-ppcre:regex-replace-all
            "<a href=\"(https?://[\\w\\-\\.\\/\\?\\=\\&\\%\\#\\+]+\\.(?:png|jpg|jpeg|gif|webp|bmp))\" target=\"_blank\">.*?</a>"
+           processed
+           "<br /><a href=\"\\1\" target=\"_blank\"><img src=\"\\1\" style=\"max-width:300px; max-height:300px; display:block; margin:0.5em 0;\" alt=\"preview\" /></a><br />"))
+
+    ;; Convert explicit "image+..." prefix overrides into image previews
+    (setf processed
+          (cl-ppcre:regex-replace-all
+           "image\\+<a href=\"(https?://[\\w\\-\\.\\/\\?\\=\\&\\%\\#\\+]+)\" target=\"_blank\">.*?</a>"
            processed
            "<br /><a href=\"\\1\" target=\"_blank\"><img src=\"\\1\" style=\"max-width:300px; max-height:300px; display:block; margin:0.5em 0;\" alt=\"preview\" /></a><br />"))
 
@@ -194,7 +206,7 @@
 (defun render-post-form (board thread-id)
   (cl-who:with-html-output-to-string (s nil :indent t)
     (:form :action (format nil "/~a/~a/post" board thread-id) :method "POST"
-           (:p (:textarea :name "epistula" :rows 8 :cols 78 :placeholder "Message")
+           (:p (:textarea :name "epistula" :rows 8 :cols 78 :placeholder "Message" :onkeydown "if(event.ctrlKey && event.key === 'Enter') { this.form.submit(); }")
                (:br)
                (:input :type "text" :name "name" :class "name" :style "display:none")
                (:input :type "text" :name "message" :class "message" :style "display:none")
@@ -337,7 +349,7 @@
       (:form :action (format nil "/~a/preferences" board) :method "POST"
              (:p (:label :for "theme" "Choose theme: ")
                  (:select :name "theme" :id "theme"
-                          (dolist (item '("default" "classic" "dark" "mona" "no"))
+                          (dolist (item '("default" "dark" "no"))
                             (cl-who:htm
                              (:option :value item
                                       :selected (and theme (string= theme item))
@@ -345,3 +357,87 @@
              (:p (:input :type "submit" :value "Save Preferences")))
       (:hr)
       (:p :class "footer" "SchemeBBS Common Lisp port"))))
+
+(defun render-moderation (boards &optional board threads thread comments theme headline)
+  (layout "cl-bbs Moderation Panel" "moderation" theme
+    (cl-who:with-html-output-to-string (s nil :indent t)
+      (:h1 "Moderation Panel")
+      (:p (:a :href "/" "Back to Home"))
+      (:hr)
+      
+      ;; 1. Boards List
+      (:h2 "Boards")
+      (:ul
+       (dolist (b boards)
+         (cl-who:htm
+          (:li (:strong (:a :href (format nil "/admin?board=~a" b) (cl-who:esc b)))
+               " &nbsp; "
+               (:form :action "/admin/action" :method "POST" :style "display:inline;"
+                      (:input :type "hidden" :name "action" :value "delete-board")
+                      (:input :type "hidden" :name "board" :value b)
+                      (:input :type "submit" :value "Delete Board" :onclick "return confirm('Are you sure you want to delete the ENTIRE board? This cannot be undone.');" :style "color:red; cursor:pointer;"))))))
+      
+      ;; 2. Threads List (if board is selected)
+      (when board
+        (cl-who:htm
+         (:hr)
+         (:h2 (cl-who:fmt "Threads in /~a/" board))
+         (if threads
+             (cl-who:htm
+              (:table :border 1 :cellpadding 5
+                      (:thead (:tr (:th "ID") (:th "Headline") (:th "Date") (:th "Actions")))
+                      (:tbody
+                       (dolist (t-data threads)
+                         (let* ((tid (car t-data))
+                                (props (cdr t-data))
+                                (headline (cdr (assoc 'cl-bbs/models::headline props))))
+                           (cl-who:htm
+                            (:tr (:td (cl-who:str (format nil "~a" tid)))
+                                 (:td (:a :href (format nil "/admin?board=~a&thread=~a" board tid) (cl-who:esc headline)))
+                                 (:td (cl-who:str (format nil "~a" (cdr (assoc 'cl-bbs/models::date props)))))
+                                 (:td (:form :action "/admin/action" :method "POST" :style "display:inline;"
+                                             (:input :type "hidden" :name "action" :value "delete-thread")
+                                             (:input :type "hidden" :name "board" :value board)
+                                             (:input :type "hidden" :name "thread" :value tid)
+                                             (:input :type "submit" :value "Delete Thread" :onclick "return confirm('Are you sure you want to delete this thread?');" :style "color:red; cursor:pointer;")))))))))
+             (cl-who:htm (:p "No threads found on this board.")))))
+      
+      ;; 3. Comments List & Editor (if thread is selected)
+      (when (and board thread)
+        (cl-who:htm
+         (:hr)
+         (:h2 (cl-who:fmt "Comments in Thread #~a (~a)" thread board))
+         (if comments
+             (cl-who:htm
+              (:dl
+               (dolist (p comments)
+                 (let* ((pid (car p))
+                        (pdata (cdr p))
+                        (content (cdr (assoc 'cl-bbs/models::content pdata)))
+                        (date (cdr (assoc 'cl-bbs/models::date pdata))))
+                   (cl-who:htm
+                    (:dt "No." (cl-who:str (format nil "~a" pid)) " " (:samp (cl-who:esc date))
+                         " &nbsp; "
+                         (:form :action "/admin/action" :method "POST" :style "display:inline;"
+                                (:input :type "hidden" :name "action" :value "delete-comment")
+                                (:input :type "hidden" :name "board" :value board)
+                                (:input :type "hidden" :name "thread" :value thread)
+                                (:input :type "hidden" :name "comment" :value pid)
+                                (:input :type "submit" :value "Delete Comment" :onclick "return confirm('Are you sure you want to delete this comment?');" :style "color:red; cursor:pointer;")))
+                    (:dd
+                     (:div :style "margin-bottom: 0.5em; padding: 0.5em; background: #fafafa; border-left: 3px solid #ccc;"
+                           (cl-who:str (format-text content thread)))
+                     (:form :action "/admin/action" :method "POST" :style "margin-top: 0.5em;"
+                            (:input :type "hidden" :name "action" :value "edit-comment")
+                            (:input :type "hidden" :name "board" :value board)
+                            (:input :type "hidden" :name "thread" :value thread)
+                            (:input :type "hidden" :name "comment" :value pid)
+                            (when (and (= pid 1) headline)
+                              (cl-who:htm
+                               (:p (:label :for "headline" "Thread Headline: ")
+                                   (:br)
+                                   (:input :type "text" :name "headline" :id "headline" :size 60 :value headline))))
+                            (:textarea :name "content" :rows 3 :cols 60 (cl-who:str content))
+                            (:br)
+                            (:input :type "submit" :value "Save Changes"))))))))
+             (cl-who:htm (:p "No comments found.")))))))))
