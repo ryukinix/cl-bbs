@@ -399,7 +399,7 @@
                                              (:input :type "hidden" :name "action" :value "delete-thread")
                                              (:input :type "hidden" :name "board" :value board)
                                              (:input :type "hidden" :name "thread" :value tid)
-                                             (:input :type "submit" :value "Delete Thread" :onclick "return confirm('Are you sure you want to delete this thread?');" :style "color:red; cursor:pointer;")))))))))
+                                             (:input :type "submit" :value "Delete Thread" :onclick "return confirm('Are you sure you want to delete this thread?');" :style "color:red; cursor:pointer;"))))))))))
              (cl-who:htm (:p "No threads found on this board.")))))
       
       ;; 3. Comments List & Editor (if thread is selected)
@@ -440,4 +440,4 @@
                             (:textarea :name "content" :rows 3 :cols 60 (cl-who:str content))
                             (:br)
                             (:input :type "submit" :value "Save Changes"))))))))
-             (cl-who:htm (:p "No comments found.")))))))))
+                            (cl-who:htm (:p "No comments found."))))))))
