@@ -1,0 +1,6 @@
+@import url("default.css");
+
+/* Extra styles for random theme */
+dd {
+  transition: background-color 0.3s ease;
+}

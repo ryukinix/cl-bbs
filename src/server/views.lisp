@@ -8,6 +8,12 @@
 
 (in-package :cl-bbs/views)
 
+(defun get-hash-hue (id-val)
+  (let ((id-num (cond ((integerp id-val) id-val)
+                      ((stringp id-val) (or (ignore-errors (parse-integer id-val :junk-allowed t)) 0))
+                      (t 0))))
+    (mod (* id-num 137) 360)))
+
 (defmacro layout (title class theme &body body)
   `(cl-who:with-html-output-to-string (s nil :prologue "<!DOCTYPE html>" :indent t)
      (:html
@@ -212,7 +218,7 @@
                (:input :type "text" :name "message" :class "message" :style "display:none")
                (:input :type "submit" :value "POST")))))
 
-(defun render-frontpage-thread (board thread-data index)
+(defun render-frontpage-thread (board thread-data index &optional theme)
   (let* ((thread-id (car thread-data))
          (props (cdr thread-data))
          (headline (cdr (assoc 'cl-bbs/models::headline props)))
@@ -225,20 +231,29 @@
             (:a :id (format nil "d~a" index)
                 :href (if (= index 10) "#d1" (format nil "#d~a" (1+ index))) "↓")
             (cl-who:str "&nbsp;"))
-      (:h2 (:a :href (format nil "/~a/~a" board thread-id) (cl-who:esc headline)))
+      (let ((heading-style (if (string= theme "random")
+                               (format nil "border-left: 5px solid hsl(~D, 80%, 45%); padding-left: 10px; margin-left: 2%;" (get-hash-hue thread-id))
+                               "")))
+        (cl-who:htm
+         (:h2 :style heading-style
+              (:a :href (format nil "/~a/~a" board thread-id) (cl-who:esc headline)))))
       (:dl
        (loop for post in posts
              for post-id = (car post)
              for post-data = (cdr post)
              for content = (cdr (assoc 'cl-bbs/models::content post-data))
              for date = (cdr (assoc 'cl-bbs/models::date post-data))
-             do (cl-who:htm
-                 (:dt (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
-                          :id (format nil "t~ap~a" thread-id post-id)
-                          (cl-who:str (format nil "~a" post-id)))
-                      " "
-                      (:samp (cl-who:esc date)))
-                 (:dd (cl-who:str (format-text content thread-id)))))
+             do (let ((post-style (if (string= theme "random")
+                                      (let ((hue (get-hash-hue post-id)))
+                                        (format nil "background-color: hsl(~D, 85%, 96%); border-left: 4px solid hsl(~D, 85%, 45%); padding: 0.5em 1em; margin: 0.3em 2% 1.2em 2%; border-radius: 0 4px 4px 0;" hue hue))
+                                      "")))
+                  (cl-who:htm
+                   (:dt (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
+                            :id (format nil "t~ap~a" thread-id post-id)
+                            (cl-who:str (format nil "~a" post-id)))
+                        " "
+                        (:samp (cl-who:esc date)))
+                   (:dd :style post-style (cl-who:str (format-text content thread-id))))))
        (:dt (:a :href (format nil "#t~ap~a" thread-id next-post-number)
                 :id (format nil "t~ap~a" thread-id next-post-number)
                 (cl-who:str (format nil "~a" next-post-number))))
@@ -253,7 +268,7 @@
       (:hr)
       (loop for t-data in threads
             for i from 1
-            do (cl-who:htm (cl-who:str (render-frontpage-thread board t-data i))))
+            do (cl-who:htm (cl-who:str (render-frontpage-thread board t-data i theme))))
       (cl-who:str (render-thread-form board))
       (:hr)
       (:p :class "footer" "SchemeBBS Common Lisp port"))))
@@ -317,7 +332,11 @@
         (:h1 (cl-who:esc board))
         (cl-who:str (render-menu board "thread"))
         (:hr)
-        (:h2 (cl-who:esc headline))
+        (let ((heading-style (if (string= theme "random")
+                                 (format nil "border-left: 5px solid hsl(~D, 80%, 45%); padding-left: 10px;" (get-hash-hue thread-id))
+                                 "")))
+          (cl-who:htm
+           (:h2 :style heading-style (cl-who:esc headline))))
         (:dl
          (loop for post in posts
                for post-id = (car post)
@@ -325,13 +344,17 @@
                for content = (cdr (assoc 'cl-bbs/models::content post-data))
                for date = (cdr (assoc 'cl-bbs/models::date post-data))
                when (funcall filter-func post-id)
-               do (cl-who:htm
-                   (:dt (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
-                            :id (format nil "t~ap~a" thread-id post-id)
-                            (cl-who:str (format nil "~a" post-id)))
-                        " "
-                        (:samp (cl-who:esc date)))
-                   (:dd (cl-who:str (format-text content thread-id)))))
+               do (let ((post-style (if (string= theme "random")
+                                        (let ((hue (get-hash-hue post-id)))
+                                          (format nil "background-color: hsl(~D, 85%, 96%); border-left: 4px solid hsl(~D, 85%, 45%); padding: 0.5em 1em; margin: 0.3em 0 1.2em 0; border-radius: 0 4px 4px 0;" hue hue))
+                                        "")))
+                    (cl-who:htm
+                     (:dt (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
+                              :id (format nil "t~ap~a" thread-id post-id)
+                              (cl-who:str (format nil "~a" post-id)))
+                          " "
+                          (:samp (cl-who:esc date)))
+                     (:dd :style post-style (cl-who:str (format-text content thread-id))))))
          (:dt (:a :href (format nil "#t~ap~a" thread-id next-post-number)
                   :id (format nil "t~ap~a" thread-id next-post-number)
                   (cl-who:str (format nil "~a" next-post-number))))
@@ -349,7 +372,7 @@
       (:form :action (format nil "/~a/preferences" board) :method "POST"
              (:p (:label :for "theme" "Choose theme: ")
                  (:select :name "theme" :id "theme"
-                          (dolist (item '("default" "dark" "no"))
+                          (dolist (item '("default" "dark" "no" "random"))
                             (cl-who:htm
                              (:option :value item
                                       :selected (and theme (string= theme item))
