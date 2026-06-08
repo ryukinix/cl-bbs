@@ -46,6 +46,9 @@
   ;; Direct image URL
   (is equal "<p>Check <br /><a href=\"https://example.com/pic.png\" target=\"_blank\"><img src=\"https://example.com/pic.png\" style=\"max-width:300px; max-height:300px; display:block; margin:0.5em 0;\" alt=\"preview\" /></a><br /></p>"
       (cl-bbs/views::format-text "Check https://example.com/pic.png"))
+  ;; Explicit image prefix override URL
+  (is equal "<p>Check <br /><a href=\"https://example.com/dynamic-image?id=1\" target=\"_blank\"><img src=\"https://example.com/dynamic-image?id=1\" style=\"max-width:300px; max-height:300px; display:block; margin:0.5em 0;\" alt=\"preview\" /></a><br /></p>"
+      (cl-bbs/views::format-text "Check image+https://example.com/dynamic-image?id=1"))
   ;; Code block (using literal newlines in CL strings)
   (is equal "<pre>;;; code block
 (list 1 2 3)</pre>"
@@ -87,7 +90,48 @@
          (res (cl-bbs/handlers:handle-request env)))
     (is = 303 (first res))
     (is equal "/foo/preferences" (getf (second res) :location))
-    (is equal "theme=dark; Path=/; Max-Age=31536000" (getf (second res) (find "Set-Cookie" (second res) :test #'string=)))))
+    (is equal "theme=dark; Path=/; Max-Age=31536000" (getf (second res) (find "Set-Cookie" (second res) :test #'string=))))
+
+  ;; 6. GET sw.js /sw.js
+  (let* ((env (list :path-info "/sw.js" :request-method :get))
+         (res (cl-bbs/handlers:handle-request env)))
+    (is = 200 (first res))
+    (is equal "application/javascript" (getf (second res) :content-type)))
+
+  ;; 7. GET manifest.json /manifest.json
+  (let* ((env (list :path-info "/manifest.json" :request-method :get))
+         (res (cl-bbs/handlers:handle-request env)))
+    (is = 200 (first res))
+    (is equal "application/json" (getf (second res) :content-type)))
+
+  ;; 8. GET Moderation Panel /admin (Unauthorized)
+  (let* ((env (list :path-info "/admin" :request-method :get))
+         (res (cl-bbs/handlers:handle-request env)))
+    (is = 401 (first res)))
+
+  ;; 9. GET Moderation Panel /admin (Authorized)
+  (let* ((auth-val (concatenate 'string "Basic " (cl-base64:string-to-base64-string "admin:superchanner")))
+         (env (list :path-info "/admin" :request-method :get
+                    :headers (alexandria:plist-hash-table (list "authorization" auth-val) :test 'equal)))
+         (res (cl-bbs/handlers:handle-request env)))
+    (is = 200 (first res))
+    (is equal "text/html; charset=utf-8" (getf (second res) :content-type))))
+
+;; Individual Administrative Commands Tests
+(define-test test-admin-get-flat-posts
+  (is equal '((1 :content "hello")) (cl-bbs-admin::get-flat-posts '((1 :content "hello"))))
+  (is equal '((1 :content "hello")) (cl-bbs-admin::get-flat-posts '(((1 :content "hello"))))))
+
+(define-test test-admin-lookup-def
+  (let ((alist '((cl-bbs/models::posts (1 :content "hello")))))
+    (is equal '((1 :content "hello")) (cl-bbs-admin::lookup-def 'cl-bbs/models::posts alist))))
+
+(define-test test-admin-find-duplicates
+  (let ((posts '((1 (cl-bbs/models::content . "test")) (2 (cl-bbs/models::content . "test")))))
+    (is = 1 (length (cl-bbs-admin::find-duplicates posts)))))
+
+(define-test test-admin-add-timezone-offset
+  (is equal "2026-06-08 01:00" (cl-bbs-admin::add-timezone-offset "2026-06-08 00:00" 1)))
 
 (defun run-tests ()
   (test 'cl-bbs/tests))

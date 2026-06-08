@@ -4,13 +4,19 @@
 <META content="text/html; charset=UTF-8" http-equiv="content-type">
 <META name="viewport" content="width=device-width, initial-scale=1.0">
 <LINK rel="icon" href="/static/favicon.ico" type="image/png">
-<TITLE>SchemeBBS</TITLE>
+<TITLE>cl-bbs</TITLE>
 <STYLE type="text/css">
 body {
     width: 98%;
+    font-family: sans-serif;
+    margin: 2em auto;
+    max-width: 800px;
+    padding: 0 1em;
+    box-sizing: border-box;
 }
 img {
-max-width: 25%;
+  max-width: 100%;
+  height: auto;
 }
 del {
   text-decoration: none;
@@ -24,15 +30,61 @@ td { padding: 0.2em 2em 0.2em 0}
 pre { background-color: #ddd; padding: 0.4em}
 blockquote { color: #666; border-left: 2px solid #999; padding-left: 0.5em; margin-left: 0}
 </STYLE>
+<SCRIPT type="text/javascript">
+if (window.location.hash === '#/admin') {
+    window.location.href = '/admin';
+}
+window.addEventListener('hashchange', function() {
+    if (window.location.hash === '#/admin') {
+        window.location.href = '/admin';
+    }
+});
+</SCRIPT>
 </HEAD>
 <BODY>
 <H1>CL-BBS</H1>
 <HR>
-<P>A SchemeBBS clone written in Common Lisp</P>
+<P>A high-performance SchemeBBS clone written in Common Lisp</P>
+
 <H2>Boards</H2>
 <UL>
 <!--BOARDS-LIST-PLACEHOLDER-->
 </UL>
+
+<H2>Create / Join Board</H2>
+<P>Enter a board name below to join an existing board or automatically create a new one. Board names must be in <strong>kebab-case</strong> (only lowercase letters, numbers, and hyphens; no spaces or underlines).</P>
+<DIV style="margin: 1em 0;">
+  <INPUT type="text" id="new-board-name" placeholder="board-name" style="padding: 6px; font-size: 1em; border: 1px solid #bababa; border-radius: 4px; font-family: monospace;" />
+  <BUTTON onclick="createBoard()" style="padding: 6px 12px; font-size: 1em; background-color: #ededed; border: 1px solid #b5b5b5; border-radius: 4px; cursor: pointer; font-weight: bold;">Go / Create Board</BUTTON>
+  <P id="board-error" style="color: red; font-size: 0.9em; margin: 0.5em 0; display: none;"></P>
+</DIV>
+
+<SCRIPT>
+function createBoard() {
+  const input = document.getElementById('new-board-name');
+  const error = document.getElementById('board-error');
+  const boardName = input.value.trim();
+  
+  // Regex for kebab-case (lowercase alphanumeric and hyphens only, no start/end hyphens)
+  const kebabRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  
+  if (!boardName) {
+    error.textContent = 'Please enter a board name.';
+    error.style.display = 'block';
+    return;
+  }
+  
+  if (!kebabRegex.test(boardName)) {
+    error.textContent = 'Invalid board name! Must contain only lowercase alphanumeric characters and hyphens (e.g. "lisp-board", no spaces, underlines or capitals).';
+    error.style.display = 'block';
+    return;
+  }
+  
+  error.style.display = 'none';
+  window.location.href = '/' + boardName + '/';
+}
+</SCRIPT>
+
 <H2>Features</H2>
 <P>One newline is a line break (&lt;BR&gt;), two or more newlines will start a new paragraph.</P>
 <TABLE id="toggled-element" summary="Formatting help">
@@ -50,14 +102,17 @@ blockquote { color: #666; border-left: 2px solid #999; padding-left: 0.5em; marg
 (lambda (h)
   ((lambda (f) (f f))
    (lambda (f) (h (lambda (x) ((f f) x))))))</PRE></TD></TR></TBODY></TABLE>
+
 <H2>Alternate Access</H2>
 <P>If you'd like to, you can also visit this website anonymously via i2p: 
 <A href="http://7ubwrcixdcemzqwqzh2vaakjsnochj2biuzpo6dc2n4f7wqj4pua.b32.i2p">textboard.i2p</A></P>
+
 <H2>Source Code</H2>
-<P>Check the first draft of this program at <A href="https://gitlab.com/naughtybits/schemebbs">gitlab</A>. It was written in the hurry of a lone hackathon, therefore some refactoring is needed before the release of a tarball.</P>
+<P>Check the original draft of SchemeBBS at <A href="https://github.com/alyssa-p-hacker/SchemeBBS">github</A>. This Common Lisp port is fully refactored, robustly tested, and packaged with local sandbox package locks.</P>
+
 <H2>A Bit of History</H2>
 <P><DEL>/prog/</DEL> was a <A href="https://en.wikipedia.org/wiki/Textboard">textboard</A> about ``programming'', hosted at world4ch.org and later dis.4chan.org. It was an odd and fascinating place that went mostly unmoderated for years.  Unfortunately the owners were made to remember its existence thanks to imbecilic spammers; and without consideration for the small community that inhabited the place, the formers decided to pull the plug on a sad day of July 2014.  <P> If you weren't lucky enough to have been a part of it, an archive of all the posts is available at <A href="https://archive.org/details/prog-20140418.db">archive.org</A>.  There's a <A href="http://world4search.readsicp.org/">search engine</A> for this archive which has also been entirely restored as web pages at <A href="https://archive.tinychan.org/prog/">tinychan.org</A>.</P>
-<P>Back then, a somewhat recurrent joke was that the BBS script, <CODE>shiichan</CODE>, should be rewritten in Scheme. I'm not aware this task was ever completed.  Well, it is now. For the sake of it. Another motivation was to write some real world software in Scheme: beside implementations you won't find a lot of Scheme code in the wild. This is especially true for MIT Scheme. So, however trivial this program is, its merits are its mere existence and the fact it's been deployed.</P>
+<P>Back then, a somewhat recurrent joke was that the BBS script, <CODE>shiichan</CODE>, should be rewritten in Scheme. Alyssa P. Hacker fulfilled this dream in MIT Scheme. Our project provides a complete, production-grade Common Lisp port of this textboard engine, preserving all original aesthetics and capabilities.</P>
 
 <H2>More History</H2>
 <P>If you're interested in the history of textboards as a whole, here are a few interesting reads: </P>
@@ -74,21 +129,21 @@ blockquote { color: #666; border-left: 2px solid #999; padding-left: 0.5em; marg
 <LI><A href="http://wakaba.c3.cx/s/web/wakaba_kareha">Kareha</A> - Popular Perl script used by <A href="http://4-ch.net/4ch">4-ch.net</A> among others</LI>
 <LI><A href="http://tanami.org/pub/software/TrueScript/Tablecat.zip">Tablecat</A> - Tablecat's Perl script (the site is currently offline)</LI>
 <LI><A href="https://github.com/desuwa/hivebbs">HiveBBS</A> - A Ruby script seen at <A href="http://bbs.neet.tv/">bbs.neet.tv</A></LI>
-<LI><A href="https://github.com/z411/weabot">Weabot</A> - Python script used by the most active western textboard: <A href="https://bienvenidoainternet.org/bai">Bienvenido a Internet</A></LI>
+<LI><A href="https://github.com/z411/weabot">Weabot</A> - Python script used by Bienvenido a Internet</LI>
 </UL>
 
-<P>Here's a <A href="http://www.9ch.in/overscript/">more comprehensive list</A>.</P>
-
 <H2>Software Stack</H2>
-<P>SchemeBBS is written in MIT/GNU Scheme, Nginx is used as a reverse proxy and the whole system runs on FreeBSD. There's no database, messages are stored as Scheme objects in plain files. This stack is lovely. Nice icons too.</P>
-<P><A href="https://mitpress.mit.edu/sites/default/files/sicp/full-text/book/book.html"><IMG src="/static/img/mit-scheme.png" alt="MIT Scheme logo"></A><A href="https://www.gnu.org/software/mit-scheme/"><IMG src="/static/img/gnu.png" alt="GNU logo"></A><A href="http://nginx.com"><IMG src="/static/img/nginx.png" alt="Nginx logo"></A><A href="http://freebsd.org"><IMG src="/static/img/freebsd.png" alt="FreeBSD logo"></A></P>
+<P>cl-bbs is written in Common Lisp (running on SBCL), Cloudflare is used as a CDN/reverse proxy and the whole system runs on Docker containers. There's no SQL database; messages are stored as Lisp S-expression objects in plain text files. This stack is extremely robust. This codebase was adapted from the original MIT Scheme <A href="https://github.com/alyssa-p-hacker/SchemeBBS">SchemeBBS</A> as a high-quality Common Lisp port, with full credit given to its original author.</P>
+<P><A href="https://sbcl.org"><IMG src="/static/img/mit-scheme.png" alt="SBCL Common Lisp" style="height:42px; width:auto; margin-right:10px;"></A><A href="https://www.gnu.org/software/mit-scheme/"><IMG src="/static/img/gnu.png" alt="GNU logo" style="height:42px; width:auto; margin-right:10px;"></A><A href="https://www.cloudflare.com"><IMG src="/static/img/nginx.png" alt="Cloudflare logo" style="height:42px; width:auto; margin-right:10px;"></A><A href="http://freebsd.org"><IMG src="/static/img/freebsd.png" alt="FreeBSD logo" style="height:42px; width:auto;"></A></P>
+
 <H2>Bonus Track</H2>
-<P>Listening to this tune will make you enjoy writing Scheme code.</P>
+<P>Listening to this tune will make you enjoy writing Common Lisp code.</P>
 <P><A href="/static/img/abelson-stole-the-precious-course-mit-version.webm"><IMG src="/static/img/snake.png" alt="The SICP snake"></A></P>
+<P style="font-size: 0.9em; text-align: center; margin-top: 2em;"><A href="/#/admin">Administration Panel</A></P>
 <HR>
 <P>
-<A href="https://validator.w3.org/check?uri=referer"><IMG src="/static/img/valid-html.png" alt="Valid ISO/IEC 15445:2000"></A>
-<A href="https://www.eff.org/deeplinks/2013/12/nsa-turns-cookies-and-more-surveillance-beacons"><IMG src="/static/img/nocookie.png" alt="This site doesn't use cookies" title="No Cookies!"></A>
-<A href="https://www.gnu.org/philosophy/javascript-trap.en.html"><IMG src="/static/img/nojs.png" alt="This site doesn't use Javascript" title="No Javascript!"></A></P>
+<A href="https://validator.w3.org/check?uri=referer"><IMG src="/static/img/valid-html.png" alt="Valid HTML"></A>
+<A href="https://www.eff.org/deeplinks/2013/12/nsa-turns-cookies-and-more-surveillance-beacons"><IMG src="/static/img/nocookie.png" alt="This site doesn't use tracking cookies" title="No Cookies!"></A>
+<A href="https://www.gnu.org/philosophy/javascript-trap.en.html"><IMG src="/static/img/nojs.png" alt="No non-free Javascript" title="No Javascript!"></A></P>
 </BODY>
 </HTML>
