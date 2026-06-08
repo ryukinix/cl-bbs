@@ -94,7 +94,7 @@ function createBoard() {
    (lambda (f) (h (lambda (x) ((f f) x))))))</PRE></TD></TR></TBODY></TABLE>
 
 <H2>Source Code</H2>
-<P>Check the original draft of SchemeBBS at <A href="https://github.com/alyssa-p-hacker/SchemeBBS">github</A>. This Common Lisp port is fully refactored, robustly tested, and packaged with local sandbox package locks.</P>
+<P>Check the refactored Common Lisp port of cl-bbs at <A href="https://github.com/ryukinix/cl-bbs">github</A>. This version is fully refactored, robustly tested, and packaged with local sandbox package locks. You can also view the original MIT Scheme draft of SchemeBBS at <A href="https://github.com/alyssa-p-hacker/SchemeBBS">SchemeBBS</A>.</P>
 
 <H2>Software Stack</H2>
 <P>cl-bbs is written in Common Lisp (running on SBCL), Cloudflare is used as a CDN/reverse proxy and the whole system runs on Docker containers. There's no SQL database; messages are stored as Lisp S-expression objects in plain text files. This stack is extremely robust. This codebase was adapted from the original MIT Scheme <A href="https://github.com/alyssa-p-hacker/SchemeBBS">SchemeBBS</A> as a high-quality Common Lisp port, with full credit given to its original author.</P>
