@@ -45,3 +45,7 @@ publish: docker-build
 
 deploy: publish
 	ssh starfox -t deploy apply cl-bbs
+
+deploy-remote:
+	git push starfox:Desktop/workspace/cl-bbs
+	ssh starfox -t "cd Desktop/workspace/cl-bbs && make deploy"
