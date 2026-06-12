@@ -160,12 +160,14 @@ dt code {
   font-size: 1em;
   font-family: inherit;
   color: #008f11;
+  text-shadow: none;
 }
 dt samp {
   font-size: 1em;
   font-family: inherit;
   margin-left: 1%;
   color: #00560b;
+  text-shadow: none;
 }
 
 dd {
