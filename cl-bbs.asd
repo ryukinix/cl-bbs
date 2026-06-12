@@ -90,4 +90,7 @@
   :pathname "tests"
   :components ((:file "package")
                (:file "main" :depends-on ("package")))
-  :perform (test-op (o c) (symbol-call :parachute :test :cl-bbs/tests)))
+  :perform (test-op (o c)
+             (let ((report (symbol-call :parachute :test :cl-bbs/tests)))
+               (when (eq (symbol-call :parachute :status report) :failed)
+                 (uiop:quit 1)))))
