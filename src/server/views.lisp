@@ -33,7 +33,11 @@
        (:link :rel "manifest" :href "/manifest.json")
        (:link :rel "icon" :href "/static/favicon.ico" :type "image/png")
        (:link :rel "stylesheet" :href (format nil "/static/styles/~a.css" (or ,theme "default")) :type "text/css")
-       (:script "if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js'); }); }")
+       (:script "if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js');
+  });
+}")
        (:script "
 function validatePostForm(form, errorId) {
   const content = form.epistula.value.trim();
@@ -112,9 +116,19 @@ function validatePostForm(form, errorId) {
     (:div :class "newthread-form"
           (:h2 :id "newthread" "New thread")
           (:p :id "newthread-error" :style "color: red; font-weight: bold; display: none;")
-          (:form :action (format nil "/~a/post" board) :method "POST" :onsubmit "return validatePostForm(this, 'newthread-error');"
+          (:form :action (format nil "/~a/post" board)
+                 :method "POST"
+                 :onsubmit "return validatePostForm(this, 'newthread-error');"
                  (:p (:input :type "text" :name "titulus" :size 35 :placeholder "Headline"))
-                 (:p (:textarea :name "epistula" :rows 5 :cols 50 :placeholder "Message" :onkeydown "if(event.ctrlKey && event.key === 'Enter') { if (validatePostForm(this.form, 'newthread-error')) { this.form.submit(); } }"))
+                 (:p (:textarea :name "epistula"
+                                :rows 5
+                                :cols 50
+                                :placeholder "Message"
+                                :onkeydown "if(event.ctrlKey && event.key === 'Enter') {
+  if (validatePostForm(this.form, 'newthread-error')) {
+    this.form.submit();
+  }
+}"))
                  (:p (:input :type "text" :name "name" :style "display:none")
                      (:input :type "text" :name "message" :style "display:none")
                      (:input :type "submit" :value "Post"))))))
@@ -179,14 +193,25 @@ function validatePostForm(form, errorId) {
            "<a href=\"\\&\" target=\"_blank\">\\&</a>"))
     (setf processed
           (cl-ppcre:regex-replace-all
-           "<a href=\"(https?://[\\w\\-\\.\\/\\?\\=\\&\\%\\#\\+]+\\.(?:png|jpg|jpeg|gif|webp|bmp))\" target=\"_blank\">.*?</a>"
+           (concatenate 'string
+                        "<a href=\"(https?://[\\w\\-\\.\\/\\?\\=\\&\\%\\#\\+]+"
+                        "\\.(?:png|jpg|jpeg|gif|webp|bmp))\" "
+                        "target=\"_blank\">.*?</a>")
            processed
-           "<br /><a href=\"\\1\" target=\"_blank\"><img src=\"\\1\" style=\"max-width:300px; max-height:300px; display:block; margin:0.5em 0;\" alt=\"preview\" /></a><br />"))
+           (concatenate 'string
+                        "<br /><a href=\"\\1\" target=\"_blank\">"
+                        "<img src=\"\\1\" style=\"max-width:300px; "
+                        "max-height:300px; display:block; margin:0.5em 0;\" "
+                        "alt=\"preview\" /></a><br />")))
     (setf processed
           (cl-ppcre:regex-replace-all
            "image\\+<a href=\"(https?://[\\w\\-\\.\\/\\?\\=\\&\\%\\#\\+]+)\" target=\"_blank\">.*?</a>"
            processed
-           "<br /><a href=\"\\1\" target=\"_blank\"><img src=\"\\1\" style=\"max-width:300px; max-height:300px; display:block; margin:0.5em 0;\" alt=\"preview\" /></a><br />"))
+           (concatenate 'string
+                        "<br /><a href=\"\\1\" target=\"_blank\">"
+                        "<img src=\"\\1\" style=\"max-width:300px; "
+                        "max-height:300px; display:block; margin:0.5em 0;\" "
+                        "alt=\"preview\" /></a><br />")))
     (setf processed
           (cl-ppcre:regex-replace-all
            "\\r\\n"
@@ -225,8 +250,18 @@ function validatePostForm(form, errorId) {
   (let ((error-id (format nil "reply-error-~a" thread-id)))
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:p :id error-id :style "color: red; font-weight: bold; display: none;")
-      (:form :action (format nil "/~a/~a/post" board thread-id) :method "POST" :onsubmit (format nil "return validatePostForm(this, '~a');" error-id)
-             (:p (:textarea :name "epistula" :rows 8 :cols 78 :placeholder "Message" :onkeydown (format nil "if(event.ctrlKey && event.key === 'Enter') { if (validatePostForm(this.form, '~a')) { this.form.submit(); } }" error-id))
+      (:form :action (format nil "/~a/~a/post" board thread-id)
+             :method "POST"
+             :onsubmit (format nil "return validatePostForm(this, '~a');" error-id)
+             (:p (:textarea :name "epistula"
+                            :rows 8
+                            :cols 78
+                            :placeholder "Message"
+                            :onkeydown (format nil "if(event.ctrlKey && event.key === 'Enter') {
+  if (validatePostForm(this.form, '~a')) {
+    this.form.submit();
+  }
+}" error-id))
                  (:br)
                  (:input :type "text" :name "name" :class "name" :style "display:none")
                  (:input :type "text" :name "message" :class "message" :style "display:none")
@@ -246,7 +281,10 @@ function validatePostForm(form, errorId) {
                 :href (if (= index 10) "#d1" (format nil "#d~a" (1+ index))) "↓")
             (cl-who:str "&nbsp;"))
       (let ((heading-style (if (string= theme "colored")
-                               (format nil "border-left: 5px solid hsl(~D, 80%, 45%); padding-left: 10px; margin-left: 2%;" (get-hash-hue thread-id))
+                               (format nil (concatenate 'string
+                                                        "border-left: 5px solid hsl(~D, 80%, 45%); "
+                                                        "padding-left: 10px; margin-left: 2%;")
+                                       (get-hash-hue thread-id))
                                "")))
         (cl-who:htm
          (:h2 :style heading-style
@@ -259,7 +297,13 @@ function validatePostForm(form, errorId) {
              for date = (cdr (assoc 'cl-bbs/models:date post-data))
              do (let ((post-style (if (string= theme "colored")
                                       (let ((hue (get-hash-hue post-id)))
-                                        (format nil "background-color: hsl(~D, 85%, 96%); border-left: 4px solid hsl(~D, 85%, 45%); padding: 0.5em 1em; margin: 0.3em 2% 1.2em 2%; border-radius: 0 4px 4px 0;" hue hue))
+                                        (format nil (concatenate 'string
+                                                                 "background-color: hsl(~D, 85%, 96%); "
+                                                                 "border-left: 4px solid hsl(~D, 85%, 45%); "
+                                                                 "padding: 0.5em 1em; "
+                                                                 "margin: 0.3em 2% 1.2em 2%; "
+                                                                 "border-radius: 0 4px 4px 0;")
+                                                hue hue))
                                       "")))
                   (cl-who:htm
                    (:dt (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
@@ -275,7 +319,8 @@ function validatePostForm(form, errorId) {
       (:hr))))
 
 (defun render-index (board threads &optional theme)
-  "Renders the board index (frontpage) HTML with the list of active THREADS and the new thread form, using layout THEME."
+  "Renders the board index (frontpage) HTML with the list of active THREADS
+and the new thread form, using layout THEME."
   (layout (format nil "/~a/ - SchemeBBS" board) nil theme
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:h1 (cl-who:esc board))
@@ -314,13 +359,16 @@ function validatePostForm(form, errorId) {
       (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
 (defun render-thread (board thread-id thread-data &optional range-string theme)
-  "Renders a single thread page HTML for THREAD-ID under BOARD with THREAD-DATA (comments), optionally filtered by RANGE-STRING, using layout THEME."
+  "Renders a single thread page HTML for THREAD-ID under BOARD with THREAD-DATA (comments),
+optionally filtered by RANGE-STRING, using layout THEME."
   (let* ((raw-thread (if (and (consp thread-data)
                              (consp (car thread-data))
                              (consp (caar thread-data)))
                          (car thread-data)
                          thread-data))
-         (headline (if (consp (car raw-thread)) (cdr (assoc 'cl-bbs/models:headline raw-thread)) (cdr (assoc 'cl-bbs/models:headline (list raw-thread)))))
+         (headline (if (consp (car raw-thread))
+                       (cdr (assoc 'cl-bbs/models:headline raw-thread))
+                       (cdr (assoc 'cl-bbs/models:headline (list raw-thread)))))
          (posts-assoc (if (consp (car raw-thread)) (assoc 'cl-bbs/models:posts raw-thread) (cadr thread-data)))
          (posts-list (if (and posts-assoc (listp (cdr posts-assoc)) (not (keywordp (cdr posts-assoc))))
                          (if (listp (cadr posts-assoc)) (cadr posts-assoc) (cdr posts-assoc))
@@ -350,7 +398,8 @@ function validatePostForm(form, errorId) {
         (cl-who:str (render-menu board "thread"))
         (:hr)
         (let ((heading-style (if (string= theme "colored")
-                                 (format nil "border-left: 5px solid hsl(~D, 80%, 45%); padding-left: 10px;" (get-hash-hue thread-id))
+                                 (format nil "border-left: 5px solid hsl(~D, 80%, 45%); padding-left: 10px;"
+                                         (get-hash-hue thread-id))
                                  "")))
           (cl-who:htm
            (:h2 :style heading-style (cl-who:esc headline))))
@@ -363,7 +412,12 @@ function validatePostForm(form, errorId) {
                when (funcall filter-func post-id)
                do (let ((post-style (if (string= theme "colored")
                                         (let ((hue (get-hash-hue post-id)))
-                                          (format nil "background-color: hsl(~D, 85%, 96%); border-left: 4px solid hsl(~D, 85%, 45%); padding: 0.5em 1em; margin: 0.3em 0 1.2em 0; border-radius: 0 4px 4px 0;" hue hue))
+                                          (format nil (concatenate 'string
+                                                                   "background-color: hsl(~D, 85%, 96%); "
+                                                                   "border-left: 4px solid hsl(~D, 85%, 45%); "
+                                                                   "padding: 0.5em 1em; margin: 0.3em 0 1.2em 0; "
+                                                                   "border-radius: 0 4px 4px 0;")
+                                                      hue hue))
                                         "")))
                     (cl-who:htm
                      (:dt (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
@@ -430,7 +484,10 @@ function updateThemePreview(themeValue) {
                (:form :action "/admin/action" :method "POST" :style "display:inline;"
                       (:input :type "hidden" :name "action" :value "delete-board")
                       (:input :type "hidden" :name "board" :value b)
-                      (:input :type "submit" :value "Delete Board" :class "delete-button" :onclick "return confirm('Are you sure you want to delete the ENTIRE board? This cannot be undone.');"))))))
+                      (:input :type "submit" :value "Delete Board" :class "delete-button"
+                              :onclick (concatenate 'string
+                                                    "return confirm('Are you sure you want to delete the ENTIRE board? "
+                                                    "This cannot be undone.');")))))))
       (when board
         (cl-who:htm
          (:hr)
@@ -446,13 +503,17 @@ function updateThemePreview(themeValue) {
                                 (headline (cdr (assoc 'cl-bbs/models:headline props))))
                            (cl-who:htm
                             (:tr (:td (cl-who:str (format nil "~a" tid)))
-                                 (:td (:a :href (format nil "/admin?board=~a&thread=~a" board tid) (cl-who:esc headline)))
+                                 (:td (:a :href (format nil "/admin?board=~a&thread=~a" board tid)
+                                          (cl-who:esc headline)))
                                  (:td (cl-who:str (format nil "~a" (cdr (assoc 'cl-bbs/models:date props)))))
                                  (:td (:form :action "/admin/action" :method "POST" :style "display:inline;"
                                              (:input :type "hidden" :name "action" :value "delete-thread")
                                              (:input :type "hidden" :name "board" :value board)
                                              (:input :type "hidden" :name "thread" :value tid)
-                                             (:input :type "submit" :value "Delete Thread" :class "delete-button" :onclick "return confirm('Are you sure you want to delete this thread?');"))))))))))
+                                             (:input :type "submit" :value "Delete Thread" :class "delete-button"
+                                                     :onclick (concatenate 'string
+                                                                           "return confirm('Are you sure you want "
+                                                                           "to delete this thread?');")))))))))))
              (cl-who:htm (:p "No threads found on this board.")))))
       (when (and board thread)
         (cl-who:htm
@@ -474,7 +535,8 @@ function updateThemePreview(themeValue) {
                                 (:input :type "hidden" :name "board" :value board)
                                 (:input :type "hidden" :name "thread" :value thread)
                                 (:input :type "hidden" :name "comment" :value pid)
-                                (:input :type "submit" :value "Delete Comment" :class "delete-button" :onclick "return confirm('Are you sure you want to delete this comment?');")))
+                                (:input :type "submit" :value "Delete Comment" :class "delete-button"
+                                        :onclick "return confirm('Are you sure you want to delete this comment?');")))
                     (:dd
                      (:div :class "comment-preview"
                            (cl-who:str (format-text content thread)))

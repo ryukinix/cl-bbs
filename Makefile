@@ -11,7 +11,7 @@ lint-fix:
 	mallet --fix src tests
 
 docker-lint:
-	docker run --rm -t -v $(PWD):/src fukamachi/mallet:latest --format line src tests
+	docker run --rm -t -v $(PWD):/app -w /app fukamachi/mallet:0.9.2 --format line src tests
 
 install-deps:
 	ros install qlot

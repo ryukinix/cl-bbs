@@ -80,7 +80,9 @@
         nil)))
 
 (defun write-sexp-file (path data)
-  (with-open-file (stream path :direction :output :if-exists :supersede :if-does-not-exist :create :external-format :utf-8)
+  (with-open-file (stream path :direction :output :if-exists :supersede
+                               :if-does-not-exist :create
+                               :external-format :utf-8)
     (write data :stream stream :pretty t)
     (terpri stream)))
 
@@ -104,7 +106,7 @@
     (unless threads-data
       (format t "No threads found for board ~A.~%" board)
       (return-from generate-index nil))
-    (let* ((sorted-threads 
+    (let* ((sorted-threads
             (sort threads-data
                   (lambda (a b)
                     (let* ((posts-a (lookup-def 'cl-bbs/models:posts (cdr a)))
@@ -142,13 +144,18 @@
 (defun list-backups ()
   (let* ((data-dir (string-right-trim "/" (get-data-dir)))
          (backup-dir (format nil "~A/backup" data-dir))
-         (backups (and (probe-file backup-dir) (sort (directory (format nil "~A/*.tar.gz" backup-dir)) #'string> :key #'namestring))))
+         (backups (and (probe-file backup-dir)
+                       (sort (directory (format nil "~A/*.tar.gz" backup-dir))
+                             #'string> :key #'namestring))))
     (if backups
         (progn
           (format t "Available backups:~%")
           (dolist (b backups)
             (let ((meta (read-backup-metadata (namestring b))))
-              (format t "  ~A ~A~%" (file-namestring b) (if (and meta (not (string= meta ""))) (format nil "- ~A" meta) "")))))
+              (format t "  ~A ~A~%" (file-namestring b)
+                      (if (and meta (not (string= meta "")))
+                          (format nil "- ~A" meta)
+                          "")))))
         (format t "No backups found.~%"))))
 
 (defun ask-confirmation (prompt)
@@ -233,7 +240,8 @@
             (format t "Post Headline: ~A~%" headline)
             (format t "Comment Date: ~A~%" comment-date)
             (format t "Comment Content:~%~A~%" comment-content)
-            (when (ask-confirmation (format nil "Are you sure you want to remove comment ~A from thread ~A?" comment-id post-id))
+            (when (ask-confirmation (format nil "Are you sure you want to remove comment ~A from thread ~A?"
+                                            comment-id post-id))
               (backup (format nil "Before removing comment ~A from thread ~A on board ~A" comment-id post-id board))
               (let ((new-posts (remove-if (lambda (p) (= (car p) comment-id)) posts)))
                 (if (null new-posts)
@@ -241,7 +249,8 @@
                       (when (probe-file sexp-file) (delete-file sexp-file))
                       (format t "Removed thread ~A entirely as it has no remaining comments.~%" post-id))
                     (progn
-                      (write-sexp-file sexp-file `((cl-bbs/models:headline . ,headline) (cl-bbs/models:posts ,new-posts)))
+                      (write-sexp-file sexp-file `((cl-bbs/models:headline . ,headline)
+                                                   (cl-bbs/models:posts ,new-posts)))
                       (format t "Removed comment ~A from thread ~A.~%" comment-id post-id)))
                 (generate-index board))))))))
 
@@ -261,7 +270,8 @@
           (let* ((content-cell (assoc 'cl-bbs/models:content (cdr comment)))
                  (content-value (cdr content-cell)))
             (uiop:with-temporary-file (:pathname tmp-path :keep t)
-              (with-open-file (stream tmp-path :direction :output :if-exists :supersede :external-format :utf-8)
+              (with-open-file (stream tmp-path :direction :output :if-exists :supersede
+                                               :external-format :utf-8)
                 (write-line content-value stream))
               (let ((editor (or (uiop:getenv "EDITOR") "vi")))
                 (format t "Opening ~A with ~A...~%" tmp-path editor)
@@ -272,25 +282,30 @@
                 (let ((new-content-value (uiop:read-file-string tmp-path)))
                   (delete-file tmp-path)
                   (when (and new-content-value (string/= new-content-value ""))
-                    (backup (format nil "Before editing comment ~A from thread ~A on board ~A" comment-id post-id board))
+                    (backup (format nil "Before editing comment ~A from thread ~A on board ~A"
+                                    comment-id post-id board))
                     (let ((new-posts (mapcar (lambda (p)
                                                (if (= (car p) comment-id)
                                                    (cons (car p)
                                                          (mapcar (lambda (kv)
                                                                    (if (eq (car kv) 'cl-bbs/models:content)
-                                                                       (cons (car kv) (string-right-trim '(#\Newline #\Return) new-content-value))
+                                                                       (cons (car kv)
+                                                                             (string-right-trim '(#\Newline #\Return)
+                                                                                                new-content-value))
                                                                        kv))
                                                                  (cdr p)))
                                                    p))
                                              posts)))
-                      (write-sexp-file sexp-file `((cl-bbs/models:headline . ,headline) (cl-bbs/models:posts ,new-posts)))
+                      (write-sexp-file sexp-file `((cl-bbs/models:headline . ,headline)
+                                                   (cl-bbs/models:posts ,new-posts)))
                       (format t "Edited comment ~A from thread ~A.~%" comment-id post-id)
                       (generate-index board)))))))))))
 
 (defun get-next-post-id (board)
   (let* ((data-dir (string-right-trim "/" (get-data-dir)))
          (sexp-dir (format nil "~A/sexp/~A/" data-dir board))
-         (files (and (probe-file sexp-dir) (uiop:directory-files (uiop:ensure-absolute-pathname sexp-dir (uiop:getcwd)))))
+         (files (and (probe-file sexp-dir)
+                     (uiop:directory-files (uiop:ensure-absolute-pathname sexp-dir (uiop:getcwd())))))
          (max-id 0))
     (dolist (file files)
       (let ((id (handler-case (parse-integer (pathname-name file))
@@ -342,7 +357,8 @@
          (sexp-dir (format nil "~A/sexp/" data-dir)))
     (cond
       ((null board)
-       (let ((boards (and (probe-file sexp-dir) (uiop:subdirectories (uiop:ensure-absolute-pathname sexp-dir (uiop:getcwd()))))))
+       (let ((boards (and (probe-file sexp-dir)
+                          (uiop:subdirectories (uiop:ensure-absolute-pathname sexp-dir (uiop:getcwd()))))))
          (if boards
              (progn
                (format t "Boards:~%")
@@ -372,8 +388,14 @@
          (if threads-data
              (let ((sorted (sort threads-data
                                  (lambda (a b)
-                                   (let ((ut-a (parse-post-date (lookup-def 'cl-bbs/models:date (cdr (last-element (get-flat-posts (lookup-def 'cl-bbs/models:posts (cdr a))))))))
-                                         (ut-b (parse-post-date (lookup-def 'cl-bbs/models:date (cdr (last-element (get-flat-posts (lookup-def 'cl-bbs/models:posts (cdr b)))))))))
+                                   (let* ((posts-a (get-flat-posts (lookup-def 'cl-bbs/models:posts (cdr a))))
+                                          (last-a (last-element posts-a))
+                                          (date-a (lookup-def 'cl-bbs/models:date (cdr last-a)))
+                                          (ut-a (parse-post-date date-a))
+                                          (posts-b (get-flat-posts (lookup-def 'cl-bbs/models:posts (cdr b))))
+                                          (last-b (last-element posts-b))
+                                          (date-b (lookup-def 'cl-bbs/models:date (cdr last-b)))
+                                          (ut-b (parse-post-date date-b)))
                                      (> ut-a ut-b))))))
                (progn
                  (format t "Threads in board ~A:~%" board)
@@ -468,7 +490,8 @@
                          (posts (lookup-def 'cl-bbs/models:posts data))
                          (dup-ids (mapcar #'car dups))
                          (new-posts (remove-if (lambda (p) (member (car p) dup-ids)) posts)))
-                    (write-sexp-file thread-path `((cl-bbs/models:headline . ,headline) (cl-bbs/models:posts ,new-posts)))
+                    (write-sexp-file thread-path `((cl-bbs/models:headline . ,headline)
+                                                   (cl-bbs/models:posts ,new-posts)))
                     (pushnew board affected-boards :test #'string-equal)
                     (format t "Removed ~D duplicates from ~A/~A~%" (length dups) board thread-id))))
               (dolist (board affected-boards)

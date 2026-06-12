@@ -166,7 +166,11 @@
   (let ((thread-path (merge-pathnames (format nil "sexp/~a/~a" board thread-id) *base-dir*)))
     (when (probe-file thread-path)
       (let* ((thread-data (read-sexp-file thread-path))
-             (raw-thread (if (and (consp thread-data) (consp (car thread-data)) (consp (caar thread-data))) (car thread-data) thread-data))
+             (raw-thread (if (and (consp thread-data)
+                                  (consp (car thread-data))
+                                  (consp (caar thread-data)))
+                             (car thread-data)
+                             thread-data))
              (posts-assoc (assoc 'cl-bbs/models:posts raw-thread)))
         (when posts-assoc
           (let* ((actual-posts (get-flat-posts posts-assoc))
@@ -182,7 +186,11 @@
   (let ((thread-path (merge-pathnames (format nil "sexp/~a/~a" board thread-id) *base-dir*)))
     (when (probe-file thread-path)
       (let* ((thread-data (read-sexp-file thread-path))
-             (raw-thread (if (and (consp thread-data) (consp (car thread-data)) (consp (caar thread-data))) (car thread-data) thread-data))
+             (raw-thread (if (and (consp thread-data)
+                                  (consp (car thread-data))
+                                  (consp (caar thread-data)))
+                             (car thread-data)
+                             thread-data))
              (posts-assoc (assoc 'cl-bbs/models:posts raw-thread)))
         (when posts-assoc
           (let* ((actual-posts (get-flat-posts posts-assoc))
@@ -218,13 +226,17 @@
 
 (defun create-thread (path headline date message)
   (let ((thread `((cl-bbs/models:headline . ,headline)
-                  (cl-bbs/models:posts . ((1 (cl-bbs/models:date . ,date) (cl-bbs/models:vip . nil) (cl-bbs/models:content . ,message)))))))
+                  (cl-bbs/models:posts . ((1 (cl-bbs/models:date . ,date)
+                                             (cl-bbs/models:vip . nil)
+                                             (cl-bbs/models:content . ,message)))))))
     (write-sexp-file path thread)))
 
 (defun add-thread-to-list (path thread-number headline date)
   (let ((threads (read-sexp-file path)))
     (write-sexp-file path
-                     (cons `(,thread-number (cl-bbs/models:headline . ,headline) (cl-bbs/models:date . ,date) (cl-bbs/models:messages . 1))
+                     (cons `(,thread-number (cl-bbs/models:headline . ,headline)
+                                            (cl-bbs/models:date . ,date)
+                                            (cl-bbs/models:messages . 1))
                            threads))))
 
 (defun add-thread-to-index (path thread-number headline date message)
@@ -232,7 +244,10 @@
         (thread `(,thread-number
                     (cl-bbs/models:headline . ,headline)
                     (cl-bbs/models:truncated . nil)
-                    (cl-bbs/models:posts ((1 (cl-bbs/models:date . ,date) (cl-bbs/models:vip . nil) (cl-bbs/models:content . ,message)))))))
+                    (cl-bbs/models:posts
+                     ((1 (cl-bbs/models:date . ,date)
+                         (cl-bbs/models:vip . nil)
+                         (cl-bbs/models:content . ,message)))))))
     (write-sexp-file path (cons thread threads))))
 
 (defun update-thread-data (thread-data new-post)
@@ -243,7 +258,11 @@
                          thread-data))
          (posts-assoc (assoc 'cl-bbs/models:posts raw-thread)))
     (if posts-assoc
-        (let* ((posts-list (if (listp (cdr posts-assoc)) (if (listp (cadr posts-assoc)) (cadr posts-assoc) (cdr posts-assoc)) (cdr posts-assoc)))
+        (let* ((posts-list (if (listp (cdr posts-assoc))
+                               (if (listp (cadr posts-assoc))
+                                   (cadr posts-assoc)
+                                   (cdr posts-assoc))
+                               (cdr posts-assoc)))
                (actual-posts (if (listp (car posts-list)) posts-list (list posts-list)))
                (updated-posts (append actual-posts (list new-post))))
           (setf (cdr posts-assoc) (list updated-posts))
@@ -292,11 +311,16 @@
       (lambda (params)
         (declare (ignore params))
         (let ((index-file (pathname (or (uiop:getenv "SBBS_INDEX_FILE")
-                                        (merge-pathnames "src/static/index.html" (asdf:system-source-directory :cl-bbs/server))))))
+                                        (merge-pathnames "src/static/index.html"
+                                                         (asdf:system-source-directory :cl-bbs/server))))))
           (if (probe-file index-file)
               (let* ((html-content (uiop:read-file-string index-file))
                      (boards-list-html (generate-boards-html-list))
-                     (dynamic-html (cl-ppcre:regex-replace-all "<!--BOARDS-LIST-PLACEHOLDER-->" html-content (lambda (match &rest regs) (declare (ignore match regs)) boards-list-html))))
+                     (dynamic-html (cl-ppcre:regex-replace-all "<!--BOARDS-LIST-PLACEHOLDER-->"
+                                                              html-content
+                                                              (lambda (match &rest regs)
+                                                                (declare (ignore match regs))
+                                                                boards-list-html))))
                 `(200 (:content-type "text/html; charset=utf-8")
                       (,dynamic-html)))
               `(200 (:content-type "text/plain") ("SchemeBBS clone root"))))))
@@ -305,7 +329,8 @@
 (setf (ningle:route *app* "/about" :method :GET)
       (lambda (params)
         (declare (ignore params))
-        (let ((about-file (pathname (merge-pathnames "src/static/about.html" (asdf:system-source-directory :cl-bbs/server)))))
+        (let ((about-file (pathname (merge-pathnames "src/static/about.html"
+                                                     (asdf:system-source-directory :cl-bbs/server)))))
           (if (probe-file about-file)
               `(200 (:content-type "text/html; charset=utf-8")
                     (,(uiop:read-file-string about-file)))
@@ -336,7 +361,11 @@
                   (let ((thread-path (merge-pathnames (format nil "sexp/~a/~a" board thread-id-str) *base-dir*)))
                     (when (probe-file thread-path)
                       (let* ((thread-data (read-sexp-file thread-path))
-                             (raw-thread (if (and (consp thread-data) (consp (car thread-data)) (consp (caar thread-data))) (car thread-data) thread-data))
+                             (raw-thread (if (and (consp thread-data)
+                                                  (consp (car thread-data))
+                                                  (consp (caar thread-data)))
+                                             (car thread-data)
+                                             thread-data))
                              (posts-assoc (assoc 'cl-bbs/models:posts raw-thread)))
                         (setf headline (cdr (assoc 'cl-bbs/models:headline raw-thread)))
                         (when posts-assoc
@@ -383,7 +412,8 @@
 (setf (ningle:route *app* "/sw.js" :method :GET)
       (lambda (params)
         (declare (ignore params))
-        (let ((sw-file (merge-pathnames "src/static/sw.js" (asdf:system-source-directory :cl-bbs/server))))
+        (let ((sw-file (merge-pathnames "src/static/sw.js"
+                                        (asdf:system-source-directory :cl-bbs/server))))
           (if (probe-file sw-file)
               `(200 (:content-type "application/javascript")
                     (,(uiop:read-file-string sw-file)))
@@ -393,7 +423,8 @@
 (setf (ningle:route *app* "/manifest.json" :method :GET)
       (lambda (params)
         (declare (ignore params))
-        (let ((manifest-file (merge-pathnames "src/static/manifest.json" (asdf:system-source-directory :cl-bbs/server))))
+        (let ((manifest-file (merge-pathnames "src/static/manifest.json"
+                                              (asdf:system-source-directory :cl-bbs/server))))
           (if (probe-file manifest-file)
               `(200 (:content-type "application/json")
                     (,(uiop:read-file-string manifest-file)))
@@ -509,10 +540,22 @@
                                               (consp (caar thread-data)))
                                          (car thread-data)
                                          thread-data))
-                         (posts-assoc (let ((assoc-result (assoc 'cl-bbs/models:posts raw-thread))) (if assoc-result assoc-result (cadr (if (consp thread-data) thread-data (list thread-data))))))
-                         (posts-list (if (listp (cdr posts-assoc)) (if (listp (cadr posts-assoc)) (cadr posts-assoc) (cdr posts-assoc)) (cdr posts-assoc)))
+                         (posts-assoc (let ((assoc-res (assoc 'cl-bbs/models:posts raw-thread)))
+                                        (if assoc-res
+                                            assoc-res
+                                            (cadr (if (consp thread-data)
+                                                      thread-data
+                                                      (list thread-data))))))
+                         (posts-list (if (listp (cdr posts-assoc))
+                                         (if (listp (cadr posts-assoc))
+                                             (cadr posts-assoc)
+                                             (cdr posts-assoc))
+                                         (cdr posts-assoc)))
                          (posts (if (listp (car posts-list)) posts-list (list posts-list)))
-                         (new-post `(,(1+ (reduce #'max posts :key #'car :initial-value 0)) (cl-bbs/models:date . ,date) (cl-bbs/models:vip . nil) (cl-bbs/models:content . ,epistula)))
+                         (new-post `(,(1+ (reduce #'max posts :key #'car :initial-value 0))
+                                     (cl-bbs/models:date . ,date)
+                                     (cl-bbs/models:vip . nil)
+                                     (cl-bbs/models:content . ,epistula)))
                          (new-thread-data (update-thread-data thread-data new-post)))
                     (write-sexp-file thread-path new-thread-data)
                     (let* ((list-path (merge-pathnames (format nil "sexp/~a/list" board) *base-dir*))
@@ -527,8 +570,13 @@
                                                    (car new-thread-data)
                                                    new-thread-data))
                                (messages-count (length (cadr (assoc 'cl-bbs/models:posts raw-new-thread))))
+                               (headline-val (if (stringp (cdr (assoc 'cl-bbs/models:headline
+                                                                      (cdr target-thread-assoc))))
+                                                 (cdr (assoc 'cl-bbs/models:headline
+                                                             (cdr target-thread-assoc)))
+                                                 (cdr (assoc 'headline (cdr target-thread-assoc)))))
                                (updated-entry `(,str-id
-                                                 (cl-bbs/models:headline . ,(if (stringp (cdr (assoc 'cl-bbs/models:headline (cdr target-thread-assoc)))) (cdr (assoc 'cl-bbs/models:headline (cdr target-thread-assoc))) (cdr (assoc 'headline (cdr target-thread-assoc)))))
+                                                 (cl-bbs/models:headline . ,headline-val)
                                                  (cl-bbs/models:date . ,date)
                                                  (cl-bbs/models:messages . ,messages-count))))
                           (write-sexp-file list-path (cons updated-entry rem-threads))))
@@ -542,10 +590,16 @@
                                                           (consp (caar new-thread-data)))
                                                      (car new-thread-data)
                                                      new-thread-data))
+                                 (headline-val (if (stringp (cdr (assoc 'cl-bbs/models:headline
+                                                                        (cdr target-index-assoc))))
+                                                   (cdr (assoc 'cl-bbs/models:headline
+                                                               (cdr target-index-assoc)))
+                                                   (cdr (assoc 'headline (cdr target-index-assoc)))))
                                  (updated-entry `(,str-id
-                                                   (cl-bbs/models:headline . ,(if (stringp (cdr (assoc 'cl-bbs/models:headline (cdr target-index-assoc)))) (cdr (assoc 'cl-bbs/models:headline (cdr target-index-assoc))) (cdr (assoc 'headline (cdr target-index-assoc)))))
+                                                   (cl-bbs/models:headline . ,headline-val)
                                                    (cl-bbs/models:truncated . nil)
-                                                   (cl-bbs/models:posts ,(cadr (assoc 'cl-bbs/models:posts raw-new-thread))))))
+                                                   (cl-bbs/models:posts
+                                                    ,(cadr (assoc 'cl-bbs/models:posts raw-new-thread))))))
                            (write-sexp-file index-path (cons updated-entry rem-index))))))
                     `(303 (:location ,(format nil "/~a/" board)) ("Redirecting...")))
                   `(404 (:content-type "text/plain") ("Thread not found")))))))
