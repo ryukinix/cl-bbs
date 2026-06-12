@@ -407,7 +407,7 @@ function validatePostForm(form, errorId) {
       (:form :action (format nil "/~a/preferences" board) :method "POST"
              (:p (:label :for "theme" "Choose theme: ")
                  (:select :name "theme" :id "theme"
-                          (dolist (item '("default" "dark" "no" "colored"))
+                          (dolist (item '("default" "classic" "dark" "no" "mona" "colored" "matrix"))
                             (cl-who:htm
                              (:option :value item
                                       :selected (and theme (string= theme item))
