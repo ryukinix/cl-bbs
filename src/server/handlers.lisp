@@ -28,12 +28,24 @@
               (push (cons name val) cookies)))))
       (nreverse cookies))))
 
+(defun sanitize-theme-name (theme-str)
+  "Validates and returns theme-str if it consists only of alphanumeric characters,
+hyphens, and underscores. Otherwise returns nil to prevent injection/directory traversal."
+  (when (and theme-str (cl-ppcre:scan "^[a-zA-Z0-9_-]+$" theme-str))
+    theme-str))
+
 (defun get-theme-from-env (env)
-  "Retrieves the active theme name from the request environment cookies."
-  (let* ((headers (getf env :headers))
-         (cookie-str (and headers (gethash "cookie" headers)))
-         (cookies (parse-cookies cookie-str)))
-    (or (cdr (assoc "theme" cookies :test #'string=)) "default")))
+  "Retrieves the active theme name from the request query parameters or cookies."
+  (let* ((query-str (getf env :query-string))
+         (query-theme (when (and query-str (not (string= query-str "")))
+                        (let ((params (quri:url-decode-params query-str)))
+                          (sanitize-theme-name (cdr (assoc "theme" params :test #'string=)))))))
+    (or query-theme
+        (let* ((headers (getf env :headers))
+               (cookie-str (and headers (gethash "cookie" headers)))
+               (cookies (parse-cookies cookie-str))
+               (cookie-theme (sanitize-theme-name (cdr (assoc "theme" cookies :test #'string=)))))
+          (or cookie-theme "default")))))
 
 (defun get-board-description (board-name)
   "Maps a board-name string to a friendly human-readable title."
