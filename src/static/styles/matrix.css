@@ -166,8 +166,9 @@ dt samp {
   font-size: 1em;
   font-family: inherit;
   margin-left: 1%;
-  color: #00560b;
+  color: #00ff41;
   text-shadow: none;
+  font-weight: bold;
 }
 
 dd {
