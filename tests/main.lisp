@@ -123,6 +123,27 @@
     (is = 200 (first res))
     (is equal "text/html; charset=utf-8" (getf (second res) :content-type))))
 
+(define-test test-empty-post-validation
+  ;; Ensure board dirs are created for testing board 'foo'
+  (cl-bbs/storage:ensure-board-dirs "foo")
+
+  ;; 1. POST New Thread with Empty Body (should 400)
+  (let* ((body-str "titulus=NoBody&epistula=   ")
+         (body-bytes (flexi-streams:string-to-octets body-str :external-format :utf-8))
+         (stream (flexi-streams:make-in-memory-input-stream body-bytes))
+         (env (list :path-info "/foo/post" :request-method :post :content-length (length body-bytes) :raw-body stream))
+         (res (cl-bbs/handlers:handle-request env)))
+    (is = 400 (first res)))
+
+  ;; 2. POST Reply with Empty Body (should 400)
+  ;; Let's assume thread 1 exists (or doesn't, but the validation check is executed first anyway)
+  (let* ((body-str "epistula=")
+         (body-bytes (flexi-streams:string-to-octets body-str :external-format :utf-8))
+         (stream (flexi-streams:make-in-memory-input-stream body-bytes))
+         (env (list :path-info "/foo/1/post" :request-method :post :content-length (length body-bytes) :raw-body stream))
+         (res (cl-bbs/handlers:handle-request env)))
+    (is = 400 (first res))))
+
 ;; Individual Administrative Commands Tests
 (define-test test-admin-get-flat-posts
   (is equal '((1 :content "hello")) (cl-bbs-admin::get-flat-posts '((1 :content "hello"))))
