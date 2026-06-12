@@ -5,6 +5,14 @@ h1 {
   margin: 0.5em 2% 0.3em 2%;
 }
 
+h2 {
+  margin: 0.5em 2%;
+}
+
+.nav {
+  margin: 0.5em 2% 0.5em 2%;
+}
+
 .preferences-form {
   margin: 1.5em 2% 2em 2%;
   padding: 0;
@@ -13,6 +21,34 @@ h1 {
 
 .preferences-form p {
   margin: 0.5em 0;
+}
+
+.theme-options-title {
+  font-weight: bold;
+  margin-bottom: 0.5em;
+}
+
+.theme-selector-container {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 0.8em;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.theme-option-label {
+  display: flex !important;
+  width: auto !important;
+  align-items: center;
+  gap: 0.5em;
+  cursor: pointer;
+  user-select: none;
+  clear: both;
+}
+
+.theme-option-text {
+  text-transform: capitalize;
 }
 
 .preferences-form input[type=submit] {

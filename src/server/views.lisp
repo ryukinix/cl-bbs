@@ -405,14 +405,29 @@ function validatePostForm(form, errorId) {
       (:hr)
       (:h2 "Preferences")
       (:form :action (format nil "/~a/preferences" board) :method "POST" :class "preferences-form"
-             (:p (:label :for "theme" "Choose theme: ")
-                 (:select :name "theme" :id "theme"
-                          (dolist (item '("default" "dark" "no" "colored" "matrix"))
-                            (cl-who:htm
-                             (:option :value item
-                                      :selected (and theme (string= theme item))
-                                      (cl-who:str item))))))
+             (:p :class "theme-options-title" "Choose theme:")
+             (:div :class "theme-selector-container"
+                   (dolist (item '("default" "dark" "no" "colored" "matrix"))
+                     (cl-who:htm
+                      (:label :class "theme-option-label"
+                              (:input :type "radio"
+                                      :name "theme"
+                                      :value item
+                                      :checked (and theme (string= theme item))
+                                      :onchange "updateThemePreview(this.value)")
+                              (:span :class "theme-option-text" (cl-who:str item))))))
              (:p (:input :type "submit" :value "Save Preferences")))
+      (:script "
+function updateThemePreview(themeValue) {
+  // Find all stylesheet links
+  const links = document.querySelectorAll('link[rel=\"stylesheet\"]');
+  for (const link of links) {
+    if (link.href.includes('/static/styles/')) {
+      link.href = '/static/styles/' + themeValue + '.css';
+    }
+  }
+}
+")
       (:hr)
       (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
