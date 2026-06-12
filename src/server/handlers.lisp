@@ -425,7 +425,9 @@
          
          (if (or (null epistula)
                  (string= "" (string-trim '(#\Space #\Tab #\Newline #\Return) epistula)))
-             `(400 (:content-type "text/plain") ("Post body cannot be empty"))
+             (let ((theme (get-theme-from-env env)))
+               `(400 (:content-type "text/html; charset=utf-8")
+                     (,(render-error-page "Post body cannot be empty" theme))))
              (progn
                (ensure-board-dirs board)
                (create-thread thread-path titulus date epistula)
@@ -448,7 +450,9 @@
               (thread-path (merge-pathnames (format nil "sexp/~a/~a" board thread-id) *base-dir*)))
          (if (or (null epistula)
                  (string= "" (string-trim '(#\Space #\Tab #\Newline #\Return) epistula)))
-             `(400 (:content-type "text/plain") ("Post body cannot be empty"))
+             (let ((theme (get-theme-from-env env)))
+               `(400 (:content-type "text/html; charset=utf-8")
+                     (,(render-error-page "Post body cannot be empty" theme))))
              (if (probe-file thread-path)
                  (let* ((thread-data (read-sexp-file thread-path))
                         (raw-thread (if (and (consp thread-data)

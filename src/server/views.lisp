@@ -4,7 +4,8 @@
            #:render-list
            #:render-thread
            #:render-preferences
-           #:render-moderation))
+           #:render-moderation
+           #:render-error-page))
 
 (in-package :cl-bbs/views)
 
@@ -48,6 +49,18 @@ function validatePostForm(form, errorId) {
              (cl-who:str (render-boards-header))
              (:hr)
              (cl-who:str (progn ,@body))))))
+
+(defun render-error-page (error-message &optional theme)
+  (layout "Error - SchemeBBS" "error-page" theme
+    (cl-who:with-html-output-to-string (s nil :indent t)
+      (:h1 "Error")
+      (:hr)
+      (:div :style "margin: 2em 2%; padding: 1.5em; border-left: 5px solid red; background-color: #fff8f8; font-family: serif;"
+            (:p :style "color: red; font-size: 1.2em; font-weight: bold; margin-top: 0;" (cl-who:esc error-message))
+            (:p "We were unable to process your post because it does not meet the validation requirements.")
+            (:p (:button :onclick "history.back();" :style "padding: 8px 16px; font-weight: bold; background-color: #fdd; border: 1px solid #c99; border-radius: 4px; cursor: pointer;" "← Go Back and Edit Post")))
+      (:hr)
+      (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
 (defun render-boards-header ()
   (let* ((sexp-dir (merge-pathnames "sexp/" cl-bbs/storage::*base-dir*))
