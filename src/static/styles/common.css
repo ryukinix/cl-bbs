@@ -1,0 +1,27 @@
+/* Structural and Shared Core Styles for cl-bbs */
+
+/* Base alignment margins and layouts */
+h1 {
+  margin: 0.5em 2% 0.3em 2%;
+}
+
+.preferences-form {
+  margin: 1.5em 2% 2em 2%;
+  padding: 0;
+  max-width: 600px;
+}
+
+.preferences-form p {
+  margin: 0.5em 0;
+}
+
+.preferences-form input[type=submit] {
+  cursor: pointer;
+}
+
+/* Base mobile responsive layout changes */
+@media (max-width: 768px) {
+  .preferences-form {
+    margin: 1.5em 0;
+  }
+}
