@@ -11,6 +11,7 @@
      (cl-bbs/handlers:handle-request env))))
 
 (defun start-app (port)
+  "Starts the Hunchentoot server running the cl-bbs application on the specified PORT."
   (when *server*
     (stop-app))
   (setf *app* (build-app))
@@ -19,6 +20,7 @@
   t)
 
 (defun stop-app ()
+  "Stops the currently running Hunchentoot server instance if one exists."
   (when *server*
     (clack:stop *server*)
     (setf *server* nil))

@@ -4,18 +4,18 @@
   (is equal 1 1))
 
 (define-test test-update-thread-data
-  (let* ((thread-data (list (list 'cl-bbs/models::headline "test")
-                            (list 'cl-bbs/models::posts '((1 (cl-bbs/models::date . "now") (cl-bbs/models::content . "first"))))))
-         (new-post '(2 (cl-bbs/models::date . "later") (cl-bbs/models::content . "second")))
+  (let* ((thread-data (list (list 'cl-bbs/models:headline "test")
+                            (list 'cl-bbs/models:posts '((1 (cl-bbs/models:date . "now") (cl-bbs/models:content . "first"))))))
+         (new-post '(2 (cl-bbs/models:date . "later") (cl-bbs/models:content . "second")))
          (result (cl-bbs/handlers::update-thread-data thread-data new-post)))
-    (is equal "test" (cadr (assoc 'cl-bbs/models::headline result)))
-    (let* ((posts-assoc (assoc 'cl-bbs/models::posts result))
+    (is equal "test" (cadr (assoc 'cl-bbs/models:headline result)))
+    (let* ((posts-assoc (assoc 'cl-bbs/models:posts result))
            (posts-list (cdr posts-assoc))
            (actual-posts (car posts-list)))
       (is = 2 (length actual-posts))
       (is = 1 (car (first actual-posts)))
       (is = 2 (car (second actual-posts)))
-      (is equal "second" (cdr (assoc 'cl-bbs/models::content (cdr (second actual-posts))))))))
+      (is equal "second" (cdr (assoc 'cl-bbs/models:content (cdr (second actual-posts))))))))
 
 (define-test test-parse-cookies
   (is equal nil (cl-bbs/handlers::parse-cookies nil))
@@ -154,15 +154,16 @@
   (is equal '((1 :content "hello")) (cl-bbs-admin::get-flat-posts '(((1 :content "hello"))))))
 
 (define-test test-admin-lookup-def
-  (let ((alist '((cl-bbs/models::posts (1 :content "hello")))))
-    (is equal '((1 :content "hello")) (cl-bbs-admin::lookup-def 'cl-bbs/models::posts alist))))
+  (let ((alist '((cl-bbs/models:posts (1 :content "hello")))))
+    (is equal '((1 :content "hello")) (cl-bbs-admin::lookup-def 'cl-bbs/models:posts alist))))
 
 (define-test test-admin-find-duplicates
-  (let ((posts '((1 (cl-bbs/models::content . "test")) (2 (cl-bbs/models::content . "test")))))
+  (let ((posts '((1 (cl-bbs/models:content . "test")) (2 (cl-bbs/models:content . "test")))))
     (is = 1 (length (cl-bbs-admin::find-duplicates posts)))))
 
 (define-test test-admin-add-timezone-offset
   (is equal "2026-06-08 01:00" (cl-bbs-admin::add-timezone-offset "2026-06-08 00:00" 1)))
 
 (defun run-tests ()
+  "Runs all test cases within the cl-bbs/tests package."
   (test 'cl-bbs/tests))
