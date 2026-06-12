@@ -23,11 +23,12 @@ exec ros -Q -- $0 "$@"
   (let* ((port (or (and argv (parse-integer (car argv) :junk-allowed t))
                   (parse-integer (or (uiop:getenv "PORT") "8222") :junk-allowed t)
                   8222))
+         (host "0.0.0.0")
          (app (lack:builder
                (:static :path "/static/"
                         :root (pathname (or (uiop:getenv "SBBS_STATIC_DIR")
                                             (merge-pathnames "src/static/" (asdf:system-source-directory :cl-bbs/server)))))
                (lambda (env) (cl-bbs/handlers:handle-request env)))))
 
-    (format t "Starting cl-bbs on port ~a~%" port)
-    (clack:clackup app :address "0.0.0.0" :port port :server :hunchentoot :use-thread nil)))
+    (format t "Starting cl-bbs on port http://~a:~a~%" host port)
+    (clack:clackup app :address host :port port :server :hunchentoot :use-thread nil)))

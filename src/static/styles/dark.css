@@ -289,3 +289,31 @@ font-family: monospace;
 background: transparent;
 text-align: center;
 }
+
+/* Dark Error page styling */
+.error-container {
+  background-color: #202427;
+  color: #95aec7;
+  border-left: 5px solid #ff3333;
+  font-family: inherit;
+}
+
+.error-container .error-title {
+  color: #ff5555;
+}
+
+.error-back-button {
+  background-color: #293035;
+  color: #95aec7;
+  border: 1px solid #334a68;
+}
+
+.error-back-button:hover {
+  background-color: #536883;
+}
+
+/* Dark Moderation Panel styling overrides */
+body.moderation .comment-preview {
+  background-color: #202427;
+  border-left: 3px solid #334a68;
+}

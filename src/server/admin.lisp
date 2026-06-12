@@ -114,7 +114,7 @@
                       (string> date-a date-b)))))
            (list-entries (mapcar #'build-list-entry sorted-threads))
            (frontpage-count 10)
-           (index-entries (mapcar #'build-index-entry 
+           (index-entries (mapcar #'build-index-entry
                                   (if (> (length sorted-threads) frontpage-count)
                                       (take sorted-threads frontpage-count)
                                       sorted-threads)))

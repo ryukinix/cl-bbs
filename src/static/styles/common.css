@@ -61,3 +61,115 @@ h2 {
     margin: 1.5em 0;
   }
 }
+
+/* Error page styling */
+.error-container {
+  margin: 2em 2%;
+  padding: 1.5em;
+  border-left: 5px solid red;
+  background-color: #fff8f8;
+  font-family: serif;
+}
+
+.error-container p {
+  margin: 0.5em 0;
+}
+
+.error-container .error-title {
+  color: red;
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-top: 0;
+}
+
+.error-back-button {
+  padding: 8px 16px;
+  font-weight: bold;
+  background-color: #fdd;
+  border: 1px solid #c99;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Moderation Panel Styles (Theme-Adaptive) */
+body.moderation {
+  max-width: 900px;
+  margin: 0 auto !important;
+  padding: 1em 2% !important;
+}
+
+body.moderation h1 {
+  margin-left: 0 !important;
+}
+
+body.moderation h2 {
+  margin-left: 0 !important;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 0.3em;
+}
+
+body.moderation ul {
+  padding-left: 1.5em;
+  margin-top: 1em;
+}
+
+body.moderation li {
+  margin-bottom: 0.8em;
+  display: flex;
+  align-items: center;
+  gap: 1em;
+}
+
+body.moderation form {
+  margin: 0;
+}
+
+body.moderation input[type=submit] {
+  padding: 4px 10px;
+  font-size: 0.85em;
+}
+
+body.moderation table {
+  width: 100% !important;
+  margin: 1.5em 0 !important;
+  border-collapse: collapse;
+}
+
+body.moderation th {
+  padding: 8px !important;
+  font-weight: bold;
+}
+
+body.moderation td {
+  padding: 8px !important;
+  vertical-align: middle;
+}
+
+body.moderation dd form {
+  margin-top: 1em;
+  padding: 1em;
+  border: 1px dashed currentColor;
+  opacity: 0.9;
+}
+
+body.moderation dd form p {
+  margin: 0.3em 0;
+}
+
+body.moderation input[type=submit].delete-button {
+  color: #ff3333 !important;
+  border-color: #ff3333 !important;
+  cursor: pointer;
+}
+
+body.moderation input[type=submit].delete-button:hover {
+  background-color: #ff3333 !important;
+  color: white !important;
+}
+
+body.moderation .comment-preview {
+  margin-bottom: 0.5em;
+  padding: 0.5em;
+  background-color: #fafafa;
+  border-left: 3px solid #ccc;
+}

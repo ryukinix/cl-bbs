@@ -64,10 +64,10 @@ function validatePostForm(form, errorId) {
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:h1 "Error")
       (:hr)
-      (:div :style "margin: 2em 2%; padding: 1.5em; border-left: 5px solid red; background-color: #fff8f8; font-family: serif;"
-            (:p :style "color: red; font-size: 1.2em; font-weight: bold; margin-top: 0;" (cl-who:esc error-message))
+      (:div :class "error-container"
+            (:p :class "error-title" (cl-who:esc error-message))
             (:p "We were unable to process your post because it does not meet the validation requirements.")
-            (:p (:button :onclick "history.back();" :style "padding: 8px 16px; font-weight: bold; background-color: #fdd; border: 1px solid #c99; border-radius: 4px; cursor: pointer;" "← Go Back and Edit Post")))
+            (:p (:button :class "error-back-button" :onclick "history.back();" "← Go Back and Edit Post")))
       (:hr)
       (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
@@ -430,7 +430,7 @@ function updateThemePreview(themeValue) {
                (:form :action "/admin/action" :method "POST" :style "display:inline;"
                       (:input :type "hidden" :name "action" :value "delete-board")
                       (:input :type "hidden" :name "board" :value b)
-                      (:input :type "submit" :value "Delete Board" :onclick "return confirm('Are you sure you want to delete the ENTIRE board? This cannot be undone.');" :style "color:red; cursor:pointer;"))))))
+                      (:input :type "submit" :value "Delete Board" :class "delete-button" :onclick "return confirm('Are you sure you want to delete the ENTIRE board? This cannot be undone.');"))))))
       (when board
         (cl-who:htm
          (:hr)
@@ -452,7 +452,7 @@ function updateThemePreview(themeValue) {
                                              (:input :type "hidden" :name "action" :value "delete-thread")
                                              (:input :type "hidden" :name "board" :value board)
                                              (:input :type "hidden" :name "thread" :value tid)
-                                             (:input :type "submit" :value "Delete Thread" :onclick "return confirm('Are you sure you want to delete this thread?');" :style "color:red; cursor:pointer;"))))))))))
+                                             (:input :type "submit" :value "Delete Thread" :class "delete-button" :onclick "return confirm('Are you sure you want to delete this thread?');"))))))))))
              (cl-who:htm (:p "No threads found on this board.")))))
       (when (and board thread)
         (cl-who:htm
@@ -474,9 +474,9 @@ function updateThemePreview(themeValue) {
                                 (:input :type "hidden" :name "board" :value board)
                                 (:input :type "hidden" :name "thread" :value thread)
                                 (:input :type "hidden" :name "comment" :value pid)
-                                (:input :type "submit" :value "Delete Comment" :onclick "return confirm('Are you sure you want to delete this comment?');" :style "color:red; cursor:pointer;")))
+                                (:input :type "submit" :value "Delete Comment" :class "delete-button" :onclick "return confirm('Are you sure you want to delete this comment?');")))
                     (:dd
-                     (:div :style "margin-bottom: 0.5em; padding: 0.5em; background: #fafafa; border-left: 3px solid #ccc;"
+                     (:div :class "comment-preview"
                            (cl-who:str (format-text content thread)))
                      (:form :action "/admin/action" :method "POST" :style "margin-top: 0.5em;"
                             (:input :type "hidden" :name "action" :value "edit-comment")
