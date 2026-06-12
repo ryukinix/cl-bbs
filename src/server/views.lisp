@@ -4,7 +4,8 @@
            #:render-list
            #:render-thread
            #:render-preferences
-           #:render-moderation))
+           #:render-moderation
+           #:render-error-page))
 
 (in-package :cl-bbs/views)
 
@@ -24,11 +25,42 @@
        (:link :rel "manifest" :href "/manifest.json")
        (:link :rel "icon" :href "/static/favicon.ico" :type "image/png")
        (:link :rel "stylesheet" :href (format nil "/static/styles/~a.css" (or ,theme "default")) :type "text/css")
-       (:script "if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js'); }); }"))
+       (:script "if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js'); }); }")
+       (:script "
+function validatePostForm(form, errorId) {
+  const content = form.epistula.value.trim();
+  const errorEl = document.getElementById(errorId);
+  if (!content) {
+    if (errorEl) {
+      errorEl.textContent = 'Post body cannot be empty!';
+      errorEl.style.display = 'block';
+    } else {
+      alert('Post body cannot be empty!');
+    }
+    return false;
+  }
+  if (errorEl) {
+    errorEl.style.display = 'none';
+  }
+  return true;
+}
+"))
       (:body :class ,class
              (cl-who:str (render-boards-header))
              (:hr)
              (cl-who:str (progn ,@body))))))
+
+(defun render-error-page (error-message &optional theme)
+  (layout "Error - SchemeBBS" "error-page" theme
+    (cl-who:with-html-output-to-string (s nil :indent t)
+      (:h1 "Error")
+      (:hr)
+      (:div :style "margin: 2em 2%; padding: 1.5em; border-left: 5px solid red; background-color: #fff8f8; font-family: serif;"
+            (:p :style "color: red; font-size: 1.2em; font-weight: bold; margin-top: 0;" (cl-who:esc error-message))
+            (:p "We were unable to process your post because it does not meet the validation requirements.")
+            (:p (:button :onclick "history.back();" :style "padding: 8px 16px; font-weight: bold; background-color: #fdd; border: 1px solid #c99; border-radius: 4px; cursor: pointer;" "← Go Back and Edit Post")))
+      (:hr)
+      (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
 (defun render-boards-header ()
   (let* ((sexp-dir (merge-pathnames "sexp/" cl-bbs/storage::*base-dir*))
@@ -70,9 +102,10 @@
   (cl-who:with-html-output-to-string (s nil :indent t)
     (:div :class "newthread-form"
           (:h2 :id "newthread" "New thread")
-          (:form :action (format nil "/~a/post" board) :method "POST"
+          (:p :id "newthread-error" :style "color: red; font-weight: bold; display: none;")
+          (:form :action (format nil "/~a/post" board) :method "POST" :onsubmit "return validatePostForm(this, 'newthread-error');"
                  (:p (:input :type "text" :name "titulus" :size 35 :placeholder "Headline"))
-                 (:p (:textarea :name "epistula" :rows 5 :cols 50 :placeholder "Message" :onkeydown "if(event.ctrlKey && event.key === 'Enter') { this.form.submit(); }"))
+                 (:p (:textarea :name "epistula" :rows 5 :cols 50 :placeholder "Message" :onkeydown "if(event.ctrlKey && event.key === 'Enter') { if (validatePostForm(this.form, 'newthread-error')) { this.form.submit(); } }"))
                  (:p (:input :type "text" :name "name" :style "display:none")
                      (:input :type "text" :name "message" :style "display:none")
                      (:input :type "submit" :value "Post"))))))
@@ -210,13 +243,15 @@
     processed))
 
 (defun render-post-form (board thread-id)
-  (cl-who:with-html-output-to-string (s nil :indent t)
-    (:form :action (format nil "/~a/~a/post" board thread-id) :method "POST"
-           (:p (:textarea :name "epistula" :rows 8 :cols 78 :placeholder "Message" :onkeydown "if(event.ctrlKey && event.key === 'Enter') { this.form.submit(); }")
-               (:br)
-               (:input :type "text" :name "name" :class "name" :style "display:none")
-               (:input :type "text" :name "message" :class "message" :style "display:none")
-               (:input :type "submit" :value "POST")))))
+  (let ((error-id (format nil "reply-error-~a" thread-id)))
+    (cl-who:with-html-output-to-string (s nil :indent t)
+      (:p :id error-id :style "color: red; font-weight: bold; display: none;")
+      (:form :action (format nil "/~a/~a/post" board thread-id) :method "POST" :onsubmit (format nil "return validatePostForm(this, '~a');" error-id)
+             (:p (:textarea :name "epistula" :rows 8 :cols 78 :placeholder "Message" :onkeydown (format nil "if(event.ctrlKey && event.key === 'Enter') { if (validatePostForm(this.form, '~a')) { this.form.submit(); } }" error-id))
+                 (:br)
+                 (:input :type "text" :name "name" :class "name" :style "display:none")
+                 (:input :type "text" :name "message" :class "message" :style "display:none")
+                 (:input :type "submit" :value "POST"))))))
 
 (defun render-frontpage-thread (board thread-data index &optional theme)
   (let* ((thread-id (car thread-data))
