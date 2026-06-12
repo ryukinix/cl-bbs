@@ -4,18 +4,20 @@
   (is equal 1 1))
 
 (define-test test-update-thread-data
-  (let* ((thread-data (list (list 'cl-bbs/models::headline "test")
-                            (list 'cl-bbs/models::posts '((1 (cl-bbs/models::date . "now") (cl-bbs/models::content . "first"))))))
-         (new-post '(2 (cl-bbs/models::date . "later") (cl-bbs/models::content . "second")))
+  (let* ((thread-data (list (list 'cl-bbs/models:headline "test")
+                            (list 'cl-bbs/models:posts
+                                  '((1 (cl-bbs/models:date . "now")
+                                       (cl-bbs/models:content . "first"))))))
+         (new-post '(2 (cl-bbs/models:date . "later") (cl-bbs/models:content . "second")))
          (result (cl-bbs/handlers::update-thread-data thread-data new-post)))
-    (is equal "test" (cadr (assoc 'cl-bbs/models::headline result)))
-    (let* ((posts-assoc (assoc 'cl-bbs/models::posts result))
+    (is equal "test" (cadr (assoc 'cl-bbs/models:headline result)))
+    (let* ((posts-assoc (assoc 'cl-bbs/models:posts result))
            (posts-list (cdr posts-assoc))
            (actual-posts (car posts-list)))
       (is = 2 (length actual-posts))
       (is = 1 (car (first actual-posts)))
       (is = 2 (car (second actual-posts)))
-      (is equal "second" (cdr (assoc 'cl-bbs/models::content (cdr (second actual-posts))))))))
+      (is equal "second" (cdr (assoc 'cl-bbs/models:content (cdr (second actual-posts))))))))
 
 (define-test test-parse-cookies
   (is equal nil (cl-bbs/handlers::parse-cookies nil))
@@ -41,13 +43,23 @@
   ;; Post reference with thread-id
   (is equal "<p><a href=\"#t4p7\">&gt;&gt;7</a></p>" (cl-bbs/views::format-text ">>7" "4"))
   ;; Standard URL
-  (is equal "<p>Check <a href=\"https://example.com/page\" target=\"_blank\">https://example.com/page</a></p>"
+  (is equal (concatenate 'string
+                         "<p>Check <a href=\"https://example.com/page\" target=\"_blank\">"
+                         "https://example.com/page</a></p>")
       (cl-bbs/views::format-text "Check https://example.com/page"))
   ;; Direct image URL
-  (is equal "<p>Check <br /><a href=\"https://example.com/pic.png\" target=\"_blank\"><img src=\"https://example.com/pic.png\" style=\"max-width:300px; max-height:300px; display:block; margin:0.5em 0;\" alt=\"preview\" /></a><br /></p>"
+  (is equal (concatenate 'string
+                         "<p>Check <br /><a href=\"https://example.com/pic.png\" target=\"_blank\">"
+                         "<img src=\"https://example.com/pic.png\" "
+                         "style=\"max-width:300px; max-height:300px; display:block; margin:0.5em 0;\" "
+                         "alt=\"preview\" /></a><br /></p>")
       (cl-bbs/views::format-text "Check https://example.com/pic.png"))
   ;; Explicit image prefix override URL
-  (is equal "<p>Check <br /><a href=\"https://example.com/dynamic-image?id=1\" target=\"_blank\"><img src=\"https://example.com/dynamic-image?id=1\" style=\"max-width:300px; max-height:300px; display:block; margin:0.5em 0;\" alt=\"preview\" /></a><br /></p>"
+  (is equal (concatenate 'string
+                         "<p>Check <br /><a href=\"https://example.com/dynamic-image?id=1\" "
+                         "target=\"_blank\"><img src=\"https://example.com/dynamic-image?id=1\" "
+                         "style=\"max-width:300px; max-height:300px; display:block; margin:0.5em 0;\" "
+                         "alt=\"preview\" /></a><br /></p>")
       (cl-bbs/views::format-text "Check image+https://example.com/dynamic-image?id=1"))
   ;; Code block (using literal newlines in CL strings)
   (is equal "<pre>;;; code block
@@ -60,7 +72,7 @@
 (define-test test-routes-and-handlers
   ;; Ensure board dirs are created for testing board 'foo'
   (cl-bbs/storage:ensure-board-dirs "foo")
-  
+
   ;; 1. GET Root /
   (let* ((env (list :path-info "/" :request-method :get))
          (res (cl-bbs/handlers:handle-request env)))
@@ -86,11 +98,15 @@
   (let* ((body-str "theme=dark")
          (body-bytes (flexi-streams:string-to-octets body-str :external-format :utf-8))
          (stream (flexi-streams:make-in-memory-input-stream body-bytes))
-         (env (list :path-info "/foo/preferences" :request-method :post :content-length (length body-bytes) :raw-body stream))
+         (env (list :path-info "/foo/preferences"
+                    :request-method :post
+                    :content-length (length body-bytes)
+                    :raw-body stream))
          (res (cl-bbs/handlers:handle-request env)))
     (is = 303 (first res))
     (is equal "/foo/preferences" (getf (second res) :location))
-    (is equal "theme=dark; Path=/; Max-Age=31536000" (getf (second res) (find "Set-Cookie" (second res) :test #'string=))))
+    (is equal "theme=dark; Path=/; Max-Age=31536000"
+        (getf (second res) (find "Set-Cookie" (second res) :test #'string=))))
 
   ;; 6. GET sw.js /sw.js
   (let* ((env (list :path-info "/sw.js" :request-method :get))
@@ -121,7 +137,27 @@
                     :headers (alexandria:plist-hash-table (list "authorization" auth-val) :test 'equal)))
          (res (cl-bbs/handlers:handle-request env)))
     (is = 200 (first res))
-    (is equal "text/html; charset=utf-8" (getf (second res) :content-type))))
+    (is equal "text/html; charset=utf-8" (getf (second res) :content-type)))
+
+  ;; 9b. GET Thread View /foo/1 (404 Not Found initially)
+  (let* ((env (list :path-info "/foo/1" :request-method :get))
+         (res (cl-bbs/handlers:handle-request env)))
+    (is = 404 (first res)))
+
+  ;; 9c. GET Thread View /foo/1 (200 OK once created)
+  (let ((thread-path (merge-pathnames "sexp/foo/1" cl-bbs/storage:*base-dir*))
+        (thread-data '((cl-bbs/models:headline . "Mock Thread")
+                        (cl-bbs/models:posts . ((1 (cl-bbs/models:date . "2026-06-12")
+                                                    (cl-bbs/models:vip . nil)
+                                                    (cl-bbs/models:content . "This is a test post")))))))
+    (cl-bbs/storage:write-sexp-file thread-path thread-data)
+    (let* ((env (list :path-info "/foo/1" :request-method :get))
+           (res (cl-bbs/handlers:handle-request env)))
+      (is = 200 (first res))
+      (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
+      (is equal t (not (null (search "Mock Thread" (first (third res)))))))
+    (when (probe-file thread-path)
+      (delete-file thread-path))))
 
 (define-test test-empty-post-validation
   ;; Ensure board dirs are created for testing board 'foo'
@@ -131,22 +167,30 @@
   (let* ((body-str "titulus=NoBody&epistula=   ")
          (body-bytes (flexi-streams:string-to-octets body-str :external-format :utf-8))
          (stream (flexi-streams:make-in-memory-input-stream body-bytes))
-         (env (list :path-info "/foo/post" :request-method :post :content-length (length body-bytes) :raw-body stream))
+         (env (list :path-info "/foo/post"
+                    :request-method :post
+                    :content-length (length body-bytes)
+                    :raw-body stream))
          (res (cl-bbs/handlers:handle-request env)))
     (is = 400 (first res))
     (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
-    (is equal t (not (null (search "Go Back and Edit Post" (first (third res)))))))
+    (is equal t (not (null (search "Go Back and Edit Post"
+                                   (first (third res)))))))
 
   ;; 2. POST Reply with Empty Body (should 400 with HTML error page)
   ;; Let's assume thread 1 exists (or doesn't, but the validation check is executed first anyway)
   (let* ((body-str "epistula=")
          (body-bytes (flexi-streams:string-to-octets body-str :external-format :utf-8))
          (stream (flexi-streams:make-in-memory-input-stream body-bytes))
-         (env (list :path-info "/foo/1/post" :request-method :post :content-length (length body-bytes) :raw-body stream))
+         (env (list :path-info "/foo/1/post"
+                    :request-method :post
+                    :content-length (length body-bytes)
+                    :raw-body stream))
          (res (cl-bbs/handlers:handle-request env)))
     (is = 400 (first res))
     (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
-    (is equal t (not (null (search "Go Back and Edit Post" (first (third res))))))))
+    (is equal t (not (null (search "Go Back and Edit Post"
+                                   (first (third res))))))))
 
 ;; Individual Administrative Commands Tests
 (define-test test-admin-get-flat-posts
@@ -154,15 +198,16 @@
   (is equal '((1 :content "hello")) (cl-bbs-admin::get-flat-posts '(((1 :content "hello"))))))
 
 (define-test test-admin-lookup-def
-  (let ((alist '((cl-bbs/models::posts (1 :content "hello")))))
-    (is equal '((1 :content "hello")) (cl-bbs-admin::lookup-def 'cl-bbs/models::posts alist))))
+  (let ((alist '((cl-bbs/models:posts (1 :content "hello")))))
+    (is equal '((1 :content "hello")) (cl-bbs-admin::lookup-def 'cl-bbs/models:posts alist))))
 
 (define-test test-admin-find-duplicates
-  (let ((posts '((1 (cl-bbs/models::content . "test")) (2 (cl-bbs/models::content . "test")))))
+  (let ((posts '((1 (cl-bbs/models:content . "test")) (2 (cl-bbs/models:content . "test")))))
     (is = 1 (length (cl-bbs-admin::find-duplicates posts)))))
 
 (define-test test-admin-add-timezone-offset
   (is equal "2026-06-08 01:00" (cl-bbs-admin::add-timezone-offset "2026-06-08 00:00" 1)))
 
 (defun run-tests ()
+  "Runs all test cases within the cl-bbs/tests package."
   (test 'cl-bbs/tests))

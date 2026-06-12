@@ -1,5 +1,11 @@
 (defpackage :cl-bbs/views
-  (:use :cl :cl-who :cl-bbs/models)
+  (:use :cl)
+  (:import-from :cl-who
+                #:with-html-output-to-string
+                #:htm
+                #:str
+                #:esc
+                #:fmt)
   (:export #:render-index
            #:render-list
            #:render-thread
@@ -11,7 +17,9 @@
 
 (defun get-hash-hue (id-val)
   (let ((id-num (cond ((integerp id-val) id-val)
-                      ((stringp id-val) (or (ignore-errors (parse-integer id-val :junk-allowed t)) 0))
+                      ((stringp id-val) (or (handler-case (parse-integer id-val :junk-allowed t)
+                                              (error () nil))
+                                            0))
                       (t 0))))
     (mod (* id-num 137) 360)))
 
@@ -25,7 +33,11 @@
        (:link :rel "manifest" :href "/manifest.json")
        (:link :rel "icon" :href "/static/favicon.ico" :type "image/png")
        (:link :rel "stylesheet" :href (format nil "/static/styles/~a.css" (or ,theme "default")) :type "text/css")
-       (:script "if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js'); }); }")
+       (:script "if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js');
+  });
+}")
        (:script "
 function validatePostForm(form, errorId) {
   const content = form.epistula.value.trim();
@@ -51,19 +63,20 @@ function validatePostForm(form, errorId) {
              (cl-who:str (progn ,@body))))))
 
 (defun render-error-page (error-message &optional theme)
+  "Renders an HTML error page displaying the given ERROR-MESSAGE, using the specified layout THEME."
   (layout "Error - SchemeBBS" "error-page" theme
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:h1 "Error")
       (:hr)
-      (:div :style "margin: 2em 2%; padding: 1.5em; border-left: 5px solid red; background-color: #fff8f8; font-family: serif;"
-            (:p :style "color: red; font-size: 1.2em; font-weight: bold; margin-top: 0;" (cl-who:esc error-message))
+      (:div :class "error-container"
+            (:p :class "error-title" (cl-who:esc error-message))
             (:p "We were unable to process your post because it does not meet the validation requirements.")
-            (:p (:button :onclick "history.back();" :style "padding: 8px 16px; font-weight: bold; background-color: #fdd; border: 1px solid #c99; border-radius: 4px; cursor: pointer;" "← Go Back and Edit Post")))
+            (:p (:button :class "error-back-button" :onclick "history.back();" "← Go Back and Edit Post")))
       (:hr)
       (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
 (defun render-boards-header ()
-  (let* ((sexp-dir (merge-pathnames "sexp/" cl-bbs/storage::*base-dir*))
+  (let* ((sexp-dir (merge-pathnames "sexp/" cl-bbs/storage:*base-dir*))
          (paths (and (probe-file sexp-dir) (uiop:subdirectories sexp-dir)))
          (boards (sort (mapcar (lambda (path)
                                  (car (last (pathname-directory path))))
@@ -103,13 +116,23 @@ function validatePostForm(form, errorId) {
     (:div :class "newthread-form"
           (:h2 :id "newthread" "New thread")
           (:p :id "newthread-error" :style "color: red; font-weight: bold; display: none;")
-          (:form :action (format nil "/~a/post" board) :method "POST" :onsubmit "return validatePostForm(this, 'newthread-error');"
+          (:form :action (format nil "/~a/post" board)
+                 :method "POST"
+                 :onsubmit "return validatePostForm(this, 'newthread-error');"
                  (:p (:input :type "text" :name "titulus" :size 35 :placeholder "Headline"))
-                 (:p (:textarea :name "epistula" :rows 5 :cols 50 :placeholder "Message" :onkeydown "if(event.ctrlKey && event.key === 'Enter') { if (validatePostForm(this.form, 'newthread-error')) { this.form.submit(); } }"))
+                 (:p (:textarea :name "epistula"
+                                :rows 5
+                                :cols 50
+                                :placeholder "Message"
+                                :onkeydown "if(event.ctrlKey && event.key === 'Enter') {
+  if (validatePostForm(this.form, 'newthread-error')) {
+    this.form.submit();
+  }
+}"))
                  (:p (:input :type "text" :name "name" :style "display:none")
                      (:input :type "text" :name "message" :style "display:none")
                      (:input :type "submit" :value "Post"))))))
-               
+
 (defun format-text (text &optional thread-id)
   (let* ((escaped (cl-who:escape-string text))
          ;; 1. Extract code blocks
@@ -117,55 +140,41 @@ function validatePostForm(form, errorId) {
          (code-block-placeholder-format "<!--CODEBLOCK-PLACEHOLDER-~a-->")
          (placeholder-idx 0)
          (processed escaped))
-    
-    ;; Replace triple backtick blocks with placeholders
     (setf processed
           (cl-ppcre:regex-replace-all
            "(?s)```\\n*(.*?)\\n*```"
            processed
            (lambda (match-string &optional content &rest others)
              (declare (ignore match-string others))
-             (let* ((placeholder (format nil code-block-placeholder-format (incf placeholder-idx))))
+             (let ((placeholder (format nil code-block-placeholder-format (incf placeholder-idx))))
                (push (cons placeholder (or content "")) code-blocks)
                placeholder))
            :simple-calls t))
-
-    ;; 2. Format inline quotes (lines starting with > but not >>)
     (setf processed
           (cl-ppcre:regex-replace-all
            "(?m)^&gt;(?!&gt;)\\s*(.*?)$"
            processed
            "<blockquote>\\1</blockquote>"))
-
-    ;; 3. Format bold (**text**)
     (setf processed
           (cl-ppcre:regex-replace-all
            "\\*\\*(.*?)\\*\\*"
            processed
            "<b>\\1</b>"))
-
-    ;; 4. Format italic (__text__)
     (setf processed
           (cl-ppcre:regex-replace-all
            "__(.*?)__"
            processed
            "<i>\\1</i>"))
-
-    ;; 5. Format monospace (`text`)
     (setf processed
           (cl-ppcre:regex-replace-all
            "`([^`]+)`"
            processed
            "<code>\\1</code>"))
-
-    ;; 6. Format spoiler (~~text~~)
     (setf processed
           (cl-ppcre:regex-replace-all
            "~~(.*?)~~"
            processed
            "<del>\\1</del>"))
-
-    ;; 7. Format post references (>>7)
     (setf processed
           (cl-ppcre:regex-replace-all
            "&gt;&gt;(\\d+)"
@@ -177,30 +186,32 @@ function validatePostForm(form, errorId) {
                    (format nil "<a href=\"#t~ap~a\">&gt;&gt;~a</a>" thread-id num-val num-val)
                    (format nil "<a href=\"#t~a\">&gt;&gt;~a</a>" num-val num-val))))
            :simple-calls t))
-
-    ;; 8. Format URLs
     (setf processed
           (cl-ppcre:regex-replace-all
            "https?://[\\w\\-\\.\\/\\?\\=\\&\\%\\#\\+]+"
            processed
            "<a href=\"\\&\" target=\"_blank\">\\&</a>"))
-
-    ;; Convert direct image links (which are now inside <a> tags) into image previews
     (setf processed
           (cl-ppcre:regex-replace-all
-           "<a href=\"(https?://[\\w\\-\\.\\/\\?\\=\\&\\%\\#\\+]+\\.(?:png|jpg|jpeg|gif|webp|bmp))\" target=\"_blank\">.*?</a>"
+           (concatenate 'string
+                        "<a href=\"(https?://[\\w\\-\\.\\/\\?\\=\\&\\%\\#\\+]+"
+                        "\\.(?:png|jpg|jpeg|gif|webp|bmp))\" "
+                        "target=\"_blank\">.*?</a>")
            processed
-           "<br /><a href=\"\\1\" target=\"_blank\"><img src=\"\\1\" style=\"max-width:300px; max-height:300px; display:block; margin:0.5em 0;\" alt=\"preview\" /></a><br />"))
-
-    ;; Convert explicit "image+..." prefix overrides into image previews
+           (concatenate 'string
+                        "<br /><a href=\"\\1\" target=\"_blank\">"
+                        "<img src=\"\\1\" style=\"max-width:300px; "
+                        "max-height:300px; display:block; margin:0.5em 0;\" "
+                        "alt=\"preview\" /></a><br />")))
     (setf processed
           (cl-ppcre:regex-replace-all
            "image\\+<a href=\"(https?://[\\w\\-\\.\\/\\?\\=\\&\\%\\#\\+]+)\" target=\"_blank\">.*?</a>"
            processed
-           "<br /><a href=\"\\1\" target=\"_blank\"><img src=\"\\1\" style=\"max-width:300px; max-height:300px; display:block; margin:0.5em 0;\" alt=\"preview\" /></a><br />"))
-
-    ;; 9. Line breaks and paragraphs
-    ;; Normalize line endings and split paragraphs
+           (concatenate 'string
+                        "<br /><a href=\"\\1\" target=\"_blank\">"
+                        "<img src=\"\\1\" style=\"max-width:300px; "
+                        "max-height:300px; display:block; margin:0.5em 0;\" "
+                        "alt=\"preview\" /></a><br />")))
     (setf processed
           (cl-ppcre:regex-replace-all
            "\\r\\n"
@@ -216,11 +227,7 @@ function validatePostForm(form, errorId) {
            "\\n"
            processed
            "<br />"))
-
-    ;; Wrap the whole thing in a paragraph if not empty
     (setf processed (format nil "<p>~a</p>" processed))
-
-    ;; 10. Restore code blocks inside `<pre>` tags
     (dolist (pair code-blocks)
       (let ((placeholder (car pair))
             (content (cdr pair)))
@@ -232,22 +239,29 @@ function validatePostForm(form, errorId) {
                  (declare (ignore match-string regs))
                  (format nil "</p><pre>~a</pre><p>" content))
                :simple-calls t))))
-
-    ;; Clean up empty paragraphs generated by block layout shifts
     (setf processed
           (cl-ppcre:regex-replace-all
            "<p>\\s*</p>"
            processed
            ""))
-
     processed))
 
 (defun render-post-form (board thread-id)
   (let ((error-id (format nil "reply-error-~a" thread-id)))
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:p :id error-id :style "color: red; font-weight: bold; display: none;")
-      (:form :action (format nil "/~a/~a/post" board thread-id) :method "POST" :onsubmit (format nil "return validatePostForm(this, '~a');" error-id)
-             (:p (:textarea :name "epistula" :rows 8 :cols 78 :placeholder "Message" :onkeydown (format nil "if(event.ctrlKey && event.key === 'Enter') { if (validatePostForm(this.form, '~a')) { this.form.submit(); } }" error-id))
+      (:form :action (format nil "/~a/~a/post" board thread-id)
+             :method "POST"
+             :onsubmit (format nil "return validatePostForm(this, '~a');" error-id)
+             (:p (:textarea :name "epistula"
+                            :rows 8
+                            :cols 78
+                            :placeholder "Message"
+                            :onkeydown (format nil "if(event.ctrlKey && event.key === 'Enter') {
+  if (validatePostForm(this.form, '~a')) {
+    this.form.submit();
+  }
+}" error-id))
                  (:br)
                  (:input :type "text" :name "name" :class "name" :style "display:none")
                  (:input :type "text" :name "message" :class "message" :style "display:none")
@@ -256,10 +270,10 @@ function validatePostForm(form, errorId) {
 (defun render-frontpage-thread (board thread-data index &optional theme)
   (let* ((thread-id (car thread-data))
          (props (cdr thread-data))
-         (headline (cdr (assoc 'cl-bbs/models::headline props)))
-         (posts (second (assoc 'cl-bbs/models::posts props)))
+         (headline (cdr (assoc 'cl-bbs/models:headline props)))
+         (posts (second (assoc 'cl-bbs/models:posts props)))
          (next-post-number (if posts (1+ (reduce #'max posts :key #'car :initial-value 0)) 1))
-         (truncated (cdr (assoc 'cl-bbs/models::truncated props))))
+         (truncated (cdr (assoc 'cl-bbs/models:truncated props))))
     (declare (ignore truncated))
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:pre :class "jump"
@@ -267,7 +281,10 @@ function validatePostForm(form, errorId) {
                 :href (if (= index 10) "#d1" (format nil "#d~a" (1+ index))) "↓")
             (cl-who:str "&nbsp;"))
       (let ((heading-style (if (string= theme "colored")
-                               (format nil "border-left: 5px solid hsl(~D, 80%, 45%); padding-left: 10px; margin-left: 2%;" (get-hash-hue thread-id))
+                               (format nil (concatenate 'string
+                                                        "border-left: 5px solid hsl(~D, 80%, 45%); "
+                                                        "padding-left: 10px; margin-left: 2%;")
+                                       (get-hash-hue thread-id))
                                "")))
         (cl-who:htm
          (:h2 :style heading-style
@@ -276,11 +293,17 @@ function validatePostForm(form, errorId) {
        (loop for post in posts
              for post-id = (car post)
              for post-data = (cdr post)
-             for content = (cdr (assoc 'cl-bbs/models::content post-data))
-             for date = (cdr (assoc 'cl-bbs/models::date post-data))
+             for content = (cdr (assoc 'cl-bbs/models:content post-data))
+             for date = (cdr (assoc 'cl-bbs/models:date post-data))
              do (let ((post-style (if (string= theme "colored")
                                       (let ((hue (get-hash-hue post-id)))
-                                        (format nil "background-color: hsl(~D, 85%, 96%); border-left: 4px solid hsl(~D, 85%, 45%); padding: 0.5em 1em; margin: 0.3em 2% 1.2em 2%; border-radius: 0 4px 4px 0;" hue hue))
+                                        (format nil (concatenate 'string
+                                                                 "background-color: hsl(~D, 85%, 96%); "
+                                                                 "border-left: 4px solid hsl(~D, 85%, 45%); "
+                                                                 "padding: 0.5em 1em; "
+                                                                 "margin: 0.3em 2% 1.2em 2%; "
+                                                                 "border-radius: 0 4px 4px 0;")
+                                                hue hue))
                                       "")))
                   (cl-who:htm
                    (:dt (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
@@ -296,6 +319,8 @@ function validatePostForm(form, errorId) {
       (:hr))))
 
 (defun render-index (board threads &optional theme)
+  "Renders the board index (frontpage) HTML with the list of active THREADS
+and the new thread form, using layout THEME."
   (layout (format nil "/~a/ - SchemeBBS" board) nil theme
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:h1 (cl-who:esc board))
@@ -309,6 +334,7 @@ function validatePostForm(form, errorId) {
       (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
 (defun render-list (board threads &optional theme)
+  "Renders the board thread-list HTML page, showing all THREADS in tabular format, using layout THEME."
   (layout (format nil "/~a/ - SchemeBBS" board) nil theme
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:h1 (cl-who:esc board))
@@ -321,9 +347,9 @@ function validatePostForm(form, errorId) {
                      for i from 1
                      do (let* ((thread-id (car t-data))
                                (props (cdr t-data))
-                               (headline (cdr (assoc 'cl-bbs/models::headline props)))
-                               (messages (cdr (assoc 'cl-bbs/models::messages props)))
-                               (date (cdr (assoc 'cl-bbs/models::date props))))
+                               (headline (cdr (assoc 'cl-bbs/models:headline props)))
+                               (messages (cdr (assoc 'cl-bbs/models:messages props)))
+                               (date (cdr (assoc 'cl-bbs/models:date props))))
                           (cl-who:htm
                            (:tr (:td (cl-who:str (format nil "~a" i)))
                                 (:td (:a :href (format nil "/~a/~a" board thread-id) (cl-who:esc headline)))
@@ -333,13 +359,17 @@ function validatePostForm(form, errorId) {
       (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
 (defun render-thread (board thread-id thread-data &optional range-string theme)
+  "Renders a single thread page HTML for THREAD-ID under BOARD with THREAD-DATA (comments),
+optionally filtered by RANGE-STRING, using layout THEME."
   (let* ((raw-thread (if (and (consp thread-data)
                              (consp (car thread-data))
                              (consp (caar thread-data)))
                          (car thread-data)
                          thread-data))
-         (headline (if (consp (car raw-thread)) (cdr (assoc 'cl-bbs/models::headline raw-thread)) (cdr (assoc 'cl-bbs/models::headline (list raw-thread)))))
-         (posts-assoc (if (consp (car raw-thread)) (assoc 'cl-bbs/models::posts raw-thread) (cadr thread-data)))
+         (headline (if (consp (car raw-thread))
+                       (cdr (assoc 'cl-bbs/models:headline raw-thread))
+                       (cdr (assoc 'cl-bbs/models:headline (list raw-thread)))))
+         (posts-assoc (if (consp (car raw-thread)) (assoc 'cl-bbs/models:posts raw-thread) (cadr thread-data)))
          (posts-list (if (and posts-assoc (listp (cdr posts-assoc)) (not (keywordp (cdr posts-assoc))))
                          (if (listp (cadr posts-assoc)) (cadr posts-assoc) (cdr posts-assoc))
                          (cdr posts-assoc)))
@@ -368,7 +398,8 @@ function validatePostForm(form, errorId) {
         (cl-who:str (render-menu board "thread"))
         (:hr)
         (let ((heading-style (if (string= theme "colored")
-                                 (format nil "border-left: 5px solid hsl(~D, 80%, 45%); padding-left: 10px;" (get-hash-hue thread-id))
+                                 (format nil "border-left: 5px solid hsl(~D, 80%, 45%); padding-left: 10px;"
+                                         (get-hash-hue thread-id))
                                  "")))
           (cl-who:htm
            (:h2 :style heading-style (cl-who:esc headline))))
@@ -376,12 +407,17 @@ function validatePostForm(form, errorId) {
          (loop for post in posts
                for post-id = (car post)
                for post-data = (cdr post)
-               for content = (cdr (assoc 'cl-bbs/models::content post-data))
-               for date = (cdr (assoc 'cl-bbs/models::date post-data))
+               for content = (cdr (assoc 'cl-bbs/models:content post-data))
+               for date = (cdr (assoc 'cl-bbs/models:date post-data))
                when (funcall filter-func post-id)
                do (let ((post-style (if (string= theme "colored")
                                         (let ((hue (get-hash-hue post-id)))
-                                          (format nil "background-color: hsl(~D, 85%, 96%); border-left: 4px solid hsl(~D, 85%, 45%); padding: 0.5em 1em; margin: 0.3em 0 1.2em 0; border-radius: 0 4px 4px 0;" hue hue))
+                                          (format nil (concatenate 'string
+                                                                   "background-color: hsl(~D, 85%, 96%); "
+                                                                   "border-left: 4px solid hsl(~D, 85%, 45%); "
+                                                                   "padding: 0.5em 1em; margin: 0.3em 0 1.2em 0; "
+                                                                   "border-radius: 0 4px 4px 0;")
+                                                      hue hue))
                                         "")))
                     (cl-who:htm
                      (:dt (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
@@ -398,6 +434,7 @@ function validatePostForm(form, errorId) {
         (:p :class "footer" "SchemeBBS Common Lisp port")))))
 
 (defun render-preferences (board &optional theme)
+  "Renders the board preferences HTML page, allowing users to choose a custom stylesheet THEME."
   (layout (format nil "/~a/ - Preferences" board) "preferences" theme
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:h1 (cl-who:esc board))
@@ -432,13 +469,12 @@ function updateThemePreview(themeValue) {
       (:p :class "footer" "SchemeBBS Common Lisp port"))))
 
 (defun render-moderation (boards &optional board threads thread comments theme headline)
+  "Renders the admin/moderation control panel HTML page showing BOARDS and allowing deletions/edits."
   (layout "cl-bbs Moderation Panel" "moderation" theme
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:h1 "Moderation Panel")
       (:p (:a :href "/" "Back to Home"))
       (:hr)
-      
-      ;; 1. Boards List
       (:h2 "Boards")
       (:ul
        (dolist (b boards)
@@ -448,9 +484,10 @@ function updateThemePreview(themeValue) {
                (:form :action "/admin/action" :method "POST" :style "display:inline;"
                       (:input :type "hidden" :name "action" :value "delete-board")
                       (:input :type "hidden" :name "board" :value b)
-                      (:input :type "submit" :value "Delete Board" :onclick "return confirm('Are you sure you want to delete the ENTIRE board? This cannot be undone.');" :style "color:red; cursor:pointer;"))))))
-      
-      ;; 2. Threads List (if board is selected)
+                      (:input :type "submit" :value "Delete Board" :class "delete-button"
+                              :onclick (concatenate 'string
+                                                    "return confirm('Are you sure you want to delete the ENTIRE board? "
+                                                    "This cannot be undone.');")))))))
       (when board
         (cl-who:htm
          (:hr)
@@ -463,19 +500,21 @@ function updateThemePreview(themeValue) {
                        (dolist (t-data threads)
                          (let* ((tid (car t-data))
                                 (props (cdr t-data))
-                                (headline (cdr (assoc 'cl-bbs/models::headline props))))
+                                (headline (cdr (assoc 'cl-bbs/models:headline props))))
                            (cl-who:htm
                             (:tr (:td (cl-who:str (format nil "~a" tid)))
-                                 (:td (:a :href (format nil "/admin?board=~a&thread=~a" board tid) (cl-who:esc headline)))
-                                 (:td (cl-who:str (format nil "~a" (cdr (assoc 'cl-bbs/models::date props)))))
+                                 (:td (:a :href (format nil "/admin?board=~a&thread=~a" board tid)
+                                          (cl-who:esc headline)))
+                                 (:td (cl-who:str (format nil "~a" (cdr (assoc 'cl-bbs/models:date props)))))
                                  (:td (:form :action "/admin/action" :method "POST" :style "display:inline;"
                                              (:input :type "hidden" :name "action" :value "delete-thread")
                                              (:input :type "hidden" :name "board" :value board)
                                              (:input :type "hidden" :name "thread" :value tid)
-                                             (:input :type "submit" :value "Delete Thread" :onclick "return confirm('Are you sure you want to delete this thread?');" :style "color:red; cursor:pointer;"))))))))))
+                                             (:input :type "submit" :value "Delete Thread" :class "delete-button"
+                                                     :onclick (concatenate 'string
+                                                                           "return confirm('Are you sure you want "
+                                                                           "to delete this thread?');")))))))))))
              (cl-who:htm (:p "No threads found on this board.")))))
-      
-      ;; 3. Comments List & Editor (if thread is selected)
       (when (and board thread)
         (cl-who:htm
          (:hr)
@@ -486,8 +525,8 @@ function updateThemePreview(themeValue) {
                (dolist (p comments)
                  (let* ((pid (car p))
                         (pdata (cdr p))
-                        (content (cdr (assoc 'cl-bbs/models::content pdata)))
-                        (date (cdr (assoc 'cl-bbs/models::date pdata))))
+                        (content (cdr (assoc 'cl-bbs/models:content pdata)))
+                        (date (cdr (assoc 'cl-bbs/models:date pdata))))
                    (cl-who:htm
                     (:dt "No." (cl-who:str (format nil "~a" pid)) " " (:samp (cl-who:esc date))
                          " &nbsp; "
@@ -496,9 +535,10 @@ function updateThemePreview(themeValue) {
                                 (:input :type "hidden" :name "board" :value board)
                                 (:input :type "hidden" :name "thread" :value thread)
                                 (:input :type "hidden" :name "comment" :value pid)
-                                (:input :type "submit" :value "Delete Comment" :onclick "return confirm('Are you sure you want to delete this comment?');" :style "color:red; cursor:pointer;")))
+                                (:input :type "submit" :value "Delete Comment" :class "delete-button"
+                                        :onclick "return confirm('Are you sure you want to delete this comment?');")))
                     (:dd
-                     (:div :style "margin-bottom: 0.5em; padding: 0.5em; background: #fafafa; border-left: 3px solid #ccc;"
+                     (:div :class "comment-preview"
                            (cl-who:str (format-text content thread)))
                      (:form :action "/admin/action" :method "POST" :style "margin-top: 0.5em;"
                             (:input :type "hidden" :name "action" :value "edit-comment")
@@ -513,4 +553,4 @@ function updateThemePreview(themeValue) {
                             (:textarea :name "content" :rows 3 :cols 60 (cl-who:str content))
                             (:br)
                             (:input :type "submit" :value "Save Changes"))))))))
-                            (cl-who:htm (:p "No comments found."))))))))
+             (cl-who:htm (:p "No comments found."))))))))

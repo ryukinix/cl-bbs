@@ -29,6 +29,31 @@ th { text-align: left; font-weight: normal; text-decoration: underline; padding-
 td { padding: 0.2em 2em 0.2em 0}
 pre { background-color: #ddd; padding: 0.4em}
 blockquote { color: #666; border-left: 2px solid #999; padding-left: 0.5em; margin-left: 0}
+h1 {
+  padding: 0;
+  font-size: 2em;
+  font-weight: bold;
+  color: #882200;
+}
+h2 {
+  padding: 0.5em 0 0 0;
+  font-size: 1.5em;
+  font-weight: bold;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  color: #882200;
+}
+h2 samp {
+  font-size: 0.66em;
+}
+hr {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  height: 1px;
+  background-color: #aaaaaa;
+  color: #aaaaaa;
+}
 </STYLE>
 </HEAD>
 <BODY>
@@ -40,6 +65,9 @@ blockquote { color: #666; border-left: 2px solid #999; padding-left: 0.5em; marg
 <UL>
 <!--BOARDS-LIST-PLACEHOLDER-->
 </UL>
+<DIV style="margin: 0.5em 2%; padding-bottom: 1em;">
+  <A href="/admin" style="text-decoration: none; font-weight: bold; padding: 6px 14px; border: 1px solid #882200; border-radius: 4px; background-color: #fff9f5; color: #882200; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: background-color 0.2s; display: inline-block;">Admin Moderation Panel</A>
+</DIV>
 
 <H2>Create / Join Board</H2>
 <P>Enter a board name below to join an existing board or automatically create a new one. Board names must be in <strong>kebab-case</strong> (only lowercase letters, numbers, and hyphens; no spaces or underlines).</P>
@@ -85,6 +113,7 @@ function createBoard() {
 <TR><TD><SAMP>~~spoiler~~</SAMP></TD><TD><DEL>spoiler</DEL></TD></TR>
 <TR><TD><SAMP>http://c2.com</SAMP></TD><TD><A href="http://c2.com">http://c2.com</A></TD></TR>
 <TR><TD><SAMP>https://example.com/pic.png</SAMP></TD><TD>direct link auto-renders as clickable <B>image preview</B></TD></TR>
+<TR><TD><SAMP>image+https://example.com/anyurl</SAMP></TD><TD>prefix renders as clickable <B>image preview</B> for any image URL (even without standard extensions)</TD></TR>
 <TR><TD><SAMP>link to post &gt;&gt;7</SAMP></TD><TD>link to post <A href="#">&gt;&gt;7</A></TD></TR>
 <TR><TD><SAMP>&gt;quoted text</SAMP></TD><TD><BLOCKQUOTE><P>quoted text</P></BLOCKQUOTE></TD></TR>
 <TR><TD><KBD>```<BR>;;;This is a block of code<BR>(lambda (h)<BR>&nbsp;&nbsp;((lambda (f) (f f))<BR>&nbsp;&nbsp;&nbsp;(lambda (f) (h (lambda (x) ((f f) x))))))<BR>```</KBD></TD>
@@ -101,6 +130,6 @@ function createBoard() {
 <P><A href="https://sbcl.org"><IMG src="/static/img/mit-scheme.png" alt="SBCL Common Lisp" style="height:42px; width:auto; margin-right:10px;"></A><A href="https://www.gnu.org/software/mit-scheme/"><IMG src="/static/img/gnu.png" alt="GNU logo" style="height:42px; width:auto; margin-right:10px;"></A><A href="https://www.cloudflare.com"><IMG src="/static/img/cloudflare.png" alt="Cloudflare logo" style="height:42px; width:auto; margin-right:10px;"></A><A href="https://www.linux.org"><IMG src="/static/img/tux.png" alt="Linux logo" style="height:42px; width:auto;"></A></P>
 
 <HR>
-<P style="font-size: 0.9em; text-align: center; margin-top: 2em;"><A href="/about">About</A> - <A href="/admin">Administration Panel</A></P>
+<P style="font-size: 0.9em; text-align: center; margin-top: 3em; padding-top: 1.5em; border-top: 1px dashed #aaa;"><A href="/about" style="text-decoration: none; font-weight: bold; color: #882200;">About cl-bbs</A></P>
 </BODY>
 </HTML>
