@@ -1,0 +1,63 @@
+@import url("common.css");
+
+body {
+    width: 98%;
+    font-family: serif;
+    margin: 2em auto;
+    max-width: 800px;
+    padding: 0 1em;
+    box-sizing: border-box;
+}
+img {
+    max-width: 100%;
+    height: auto;
+}
+del {
+    text-decoration: none;
+    background-color: black;
+}
+del:hover {
+    background-color: transparent;
+}
+th { text-align: left; font-weight: normal; text-decoration: underline; padding-bottom: 1em;}
+td { padding: 0.2em 2em 0.2em 0}
+pre { background-color: #ddd; padding: 0.4em}
+blockquote { color: #666; border-left: 2px solid #999; padding-left: 0.5em; margin-left: 0}
+h1 {
+    margin: 0;
+    padding: 0;
+    font-size: 2em;
+    font-weight: bold;
+    color: #882200;
+}
+h2 {
+    margin: 0;
+    padding: 0;
+    font-size: 1.5em;
+    font-weight: bold;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    color: #882200;
+}
+h2 samp {
+    font-size: 0.66em;
+}
+hr {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    height: 1px;
+    background-color: #aaaaaa;
+    color: #aaaaaa;
+}
+a, a:visited, a:active {
+    color: #882200;
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+a:target {
+    background-color: #f3f3f3;
+    text-decoration: underline;
+}

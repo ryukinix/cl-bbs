@@ -32,7 +32,7 @@
        (:title (cl-who:esc ,title))
        (:link :rel "manifest" :href "/manifest.json")
        (:link :rel "icon" :href "/static/favicon.ico" :type "image/png")
-       (:link :rel "stylesheet" :href (format nil "/static/styles/~a.css" (or ,theme "default")) :type "text/css")
+       (:link :rel "stylesheet" :href (format nil "/static/styles/themes/~a.css" (or ,theme "default")) :type "text/css")
        (:script "if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js');
@@ -459,8 +459,8 @@ function updateThemePreview(themeValue) {
   // Find all stylesheet links
   const links = document.querySelectorAll('link[rel=\"stylesheet\"]');
   for (const link of links) {
-    if (link.href.includes('/static/styles/')) {
-      link.href = '/static/styles/' + themeValue + '.css';
+    if (link.href.includes('/static/styles/themes/')) {
+      link.href = '/static/styles/themes/' + themeValue + '.css';
     }
   }
 }
