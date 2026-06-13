@@ -1,11 +1,11 @@
 const CACHE_NAME = 'cl-bbs-v1';
 const ASSETS = [
   '/',
-  '/static/styles/default.css',
-  '/static/styles/dark.css',
-  '/static/styles/no.css',
-  '/static/styles/colored.css',
-  '/static/styles/matrix.css',
+  '/static/styles/themes/default.css',
+  '/static/styles/themes/dark.css',
+  '/static/styles/themes/no.css',
+  '/static/styles/themes/colored.css',
+  '/static/styles/themes/matrix.css',
   '/static/favicon.ico',
   '/static/schemebbs.png'
 ];
