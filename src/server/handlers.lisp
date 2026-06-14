@@ -34,6 +34,20 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
   (when (and theme-str (cl-ppcre:scan "^[a-zA-Z0-9_-]+$" theme-str))
     theme-str))
 
+(defun sanitize-board-name (board-str)
+  "Validates and returns board-str if it consists only of alphanumeric characters,
+hyphens, and underscores. Otherwise returns nil to prevent injection/directory traversal."
+  (when (and board-str (cl-ppcre:scan "^[a-zA-Z0-9_-]+$" board-str))
+    board-str))
+
+(defun get-default-board-from-env (env)
+  "Retrieves the default board name from the request cookies."
+  (let* ((headers (getf env :headers))
+         (cookie-str (and headers (gethash "cookie" headers)))
+         (cookies (parse-cookies cookie-str))
+         (cookie-board (sanitize-board-name (cdr (assoc "default_board" cookies :test #'string=)))))
+    (and (not (string= cookie-board "")) cookie-board)))
+
 (defun get-theme-from-env (env)
   "Retrieves the active theme name from the request query parameters or cookies."
   (let* ((query-str (getf env :query-string))
@@ -318,24 +332,43 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
             (intern (string-upcase (symbol-name (getf normalized-env :request-method))) :keyword)))
     (lack.component:call *app* normalized-env)))
 
+(defun render-main-index ()
+  (let ((index-file (pathname (or (uiop:getenv "SBBS_INDEX_FILE")
+                                  (merge-pathnames "src/static/index.html"
+                                                   (asdf:system-source-directory :cl-bbs/server))))))
+    (if (probe-file index-file)
+        (let* ((html-content (uiop:read-file-string index-file))
+               (boards-list-html (generate-boards-html-list))
+               (dynamic-html (cl-ppcre:regex-replace-all "<!--BOARDS-LIST-PLACEHOLDER-->"
+                                                        html-content
+                                                        (lambda (match &rest regs)
+                                                          (declare (ignore match regs))
+                                                          boards-list-html))))
+          `(200 (:content-type "text/html; charset=utf-8"
+                 :cache-control "no-store, no-cache, must-revalidate, max-age=0"
+                 :pragma "no-cache"
+                 :expires "0")
+                (,dynamic-html)))
+        `(200 (:content-type "text/plain"
+               :cache-control "no-store, no-cache, must-revalidate, max-age=0"
+               :pragma "no-cache"
+               :expires "0") ("SchemeBBS clone root")))))
+
 ;; 1. GET /
 (setf (ningle:route *app* "/" :method :GET)
       (lambda (params)
         (declare (ignore params))
-        (let ((index-file (pathname (or (uiop:getenv "SBBS_INDEX_FILE")
-                                        (merge-pathnames "src/static/index.html"
-                                                         (asdf:system-source-directory :cl-bbs/server))))))
-          (if (probe-file index-file)
-              (let* ((html-content (uiop:read-file-string index-file))
-                     (boards-list-html (generate-boards-html-list))
-                     (dynamic-html (cl-ppcre:regex-replace-all "<!--BOARDS-LIST-PLACEHOLDER-->"
-                                                              html-content
-                                                              (lambda (match &rest regs)
-                                                                (declare (ignore match regs))
-                                                                boards-list-html))))
-                `(200 (:content-type "text/html; charset=utf-8")
-                      (,dynamic-html)))
-              `(200 (:content-type "text/plain") ("SchemeBBS clone root"))))))
+        (let* ((env (lack.request:request-env ningle:*request*))
+               (default-board (get-default-board-from-env env)))
+          (if default-board
+              `(303 (:location ,(format nil "/~a/" default-board)) ("Redirecting..."))
+              (render-main-index)))))
+
+;; 1b. GET /index.html
+(setf (ningle:route *app* "/index.html" :method :GET)
+      (lambda (params)
+        (declare (ignore params))
+        (render-main-index)))
 
 ;; 2. GET /about
 (setf (ningle:route *app* "/about" :method :GET)
@@ -461,9 +494,10 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
       (lambda (params)
         (let* ((board (cdr (assoc :board params)))
                (env (lack.request:request-env ningle:*request*))
-               (theme (get-theme-from-env env)))
+               (theme (get-theme-from-env env))
+               (default-board (get-default-board-from-env env)))
           `(200 (:content-type "text/html; charset=utf-8")
-                (,(render-preferences board theme))))))
+                (,(render-preferences board theme default-board))))))
 
 ;; 9. POST /:board/preferences
 (setf (ningle:route *app* "/:board/preferences" :method :POST)
@@ -471,9 +505,11 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
         (let* ((env (lack.request:request-env ningle:*request*))
                (parsed-params (get-body-params params env))
                (board (cdr (assoc :board params)))
-               (theme (cdr (assoc "theme" parsed-params :test #'string=))))
-          `(303 (:location ,(format nil "/~a/preferences" board)
-                 "Set-Cookie" ,(format nil "theme=~a; Path=/; Max-Age=31536000" (or theme "default")))
+               (theme (cdr (assoc "theme" parsed-params :test #'string=)))
+               (default-board (cdr (assoc "default_board" parsed-params :test #'string=))))
+          `(303 ("Set-Cookie" ,(format nil "theme=~a; Path=/; Max-Age=31536000" (or theme "default"))
+                 "Set-Cookie" ,(format nil "default_board=~a; Path=/; Max-Age=31536000" (or default-board ""))
+                 :location ,(format nil "/~a/preferences" board))
                 ("Redirecting...")))))
 
 ;; 10. POST /:board/post (New Thread)

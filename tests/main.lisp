@@ -133,18 +133,26 @@
     (is equal "text/html; charset=utf-8" (second (second res))))
 
   ;; 5. POST Preferences /foo/preferences
-  (let* ((body-str "theme=dark")
+  (let* ((body-str "theme=dark&default_board=foo")
          (body-bytes (flexi-streams:string-to-octets body-str :external-format :utf-8))
          (stream (flexi-streams:make-in-memory-input-stream body-bytes))
          (env (list :path-info "/foo/preferences"
                     :request-method :post
                     :content-length (length body-bytes)
                     :raw-body stream))
-         (res (cl-bbs/handlers:handle-request env)))
+         (res (cl-bbs/handlers:handle-request env))
+         (headers (second res))
+         (has-theme-cookie nil)
+         (has-board-cookie nil))
+    (loop for (key val) on headers by #'cddr
+          when (and (stringp key) (string= key "Set-Cookie"))
+            do (cond
+                 ((search "theme=dark;" val) (setf has-theme-cookie t))
+                 ((search "default_board=foo;" val) (setf has-board-cookie t))))
     (is = 303 (first res))
     (is equal "/foo/preferences" (getf (second res) :location))
-    (is equal "theme=dark; Path=/; Max-Age=31536000"
-        (getf (second res) (find "Set-Cookie" (second res) :test #'string=))))
+    (true has-theme-cookie)
+    (true has-board-cookie))
 
   ;; 6. GET sw.js /sw.js
   (let* ((env (list :path-info "/sw.js" :request-method :get))
