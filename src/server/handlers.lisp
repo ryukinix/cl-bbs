@@ -317,7 +317,8 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
               (let ((body-bytes (make-array content-len :element-type '(unsigned-byte 8)))
                     (stream (getf env :raw-body)))
                 (let ((bytes-read (read-sequence body-bytes stream)))
-                  (let ((body-str (flexi-streams:octets-to-string body-bytes :start 0 :end bytes-read :external-format :utf-8)))
+                  (let ((body-str (flexi-streams:octets-to-string
+                                   body-bytes :start 0 :end bytes-read :external-format :utf-8)))
                     (quri:url-decode-params body-str))))
               params)))))
 
@@ -508,9 +509,9 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                (theme (cdr (assoc "theme" parsed-params :test #'string=)))
                (default-board (let ((val (cdr (assoc "default_board" parsed-params :test #'string=))))
                                 (if val (string-trim '(#\Space #\Tab #\Newline #\Return) val) ""))))
-          `(303 ("Set-Cookie" (,(format nil "theme=~a; Path=/; Max-Age=31536000" (or theme "default"))
-                               ,(format nil "default_board=~a; Path=/; Max-Age=31536000" (or default-board "")))
-                 :location ,(format nil "/~a/preferences" board))
+          `(303 (:location ,(format nil "/~a/preferences" board)
+                 :set-cookie ,(format nil "theme=~a; Path=/; Max-Age=31536000" (or theme "default"))
+                 :set-cookie ,(format nil "default_board=~a; Path=/; Max-Age=31536000" (or default-board "")))
                 ("Redirecting...")))))
 
 ;; 10. POST /:board/post (New Thread)

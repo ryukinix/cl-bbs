@@ -142,11 +142,13 @@
                     :raw-body stream))
          (res (cl-bbs/handlers:handle-request env))
          (headers (second res))
-         (cookies (getf headers (find "Set-Cookie" headers :test #'string=)))
-         (has-theme-cookie (and (listp cookies)
-                                (some (lambda (val) (search "theme=dark;" val)) cookies)))
-         (has-board-cookie (and (listp cookies)
-                                (some (lambda (val) (search "default_board=foo;" val)) cookies))))
+         (has-theme-cookie nil)
+         (has-board-cookie nil))
+    (loop for (key val) on headers by #'cddr
+          when (and (keywordp key) (string-equal (symbol-name key) "set-cookie"))
+            do (cond
+                 ((search "theme=dark;" val) (setf has-theme-cookie t))
+                 ((search "default_board=foo;" val) (setf has-board-cookie t))))
     (is = 303 (first res))
     (is equal "/foo/preferences" (getf headers :location))
     (true has-theme-cookie)
