@@ -1,6 +1,5 @@
-const CACHE_NAME = 'cl-bbs-v1';
+const CACHE_NAME = 'cl-bbs-v2';
 const ASSETS = [
-  '/',
   '/static/styles/themes/default.css',
   '/static/styles/themes/dark.css',
   '/static/styles/themes/no.css',
