@@ -507,8 +507,8 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                (board (cdr (assoc :board params)))
                (theme (cdr (assoc "theme" parsed-params :test #'string=)))
                (default-board (cdr (assoc "default_board" parsed-params :test #'string=))))
-          `(303 ("Set-Cookie" ,(format nil "theme=~a; Path=/; Max-Age=31536000" (or theme "default"))
-                 "Set-Cookie" ,(format nil "default_board=~a; Path=/; Max-Age=31536000" (or default-board ""))
+          `(303 ("Set-Cookie" (,(format nil "theme=~a; Path=/; Max-Age=31536000" (or theme "default"))
+                               ,(format nil "default_board=~a; Path=/; Max-Age=31536000" (or default-board "")))
                  :location ,(format nil "/~a/preferences" board))
                 ("Redirecting...")))))
 
