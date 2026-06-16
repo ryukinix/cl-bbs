@@ -15,6 +15,28 @@
 
 (in-package :cl-bbs/views)
 
+(defun get-git-commit-hash ()
+  "Gets the git commit hash from environmental dynamics (APP_COMMIT_HASH) with a fallback to uiop:run-program."
+  (let ((env-hash (uiop:getenv "APP_COMMIT_HASH")))
+    (if (and env-hash (string/= env-hash ""))
+        env-hash
+        (or (handler-case
+                (string-trim '(#\Space #\Tab #\Newline #\Return)
+                             (uiop:run-program '("git" "rev-parse" "--short" "HEAD")
+                                               :output :string))
+              (error () nil))
+            "unknown"))))
+
+(defun render-footer-html ()
+  "Renders the common footer HTML with cl-bbs version hash and a GitHub link."
+  (let ((hash (get-git-commit-hash)))
+    (cl-who:with-html-output-to-string (s nil :indent t)
+      (:p :class "footer"
+          "cl-bbs version:"
+          (:a :href (format nil "https://github.com/ryukinix/cl-bbs/commit/~a" hash)
+              :target "_blank"
+              (cl-who:esc hash))))))
+
 (defun get-hash-hue (id-val)
   (let ((id-num (cond ((integerp id-val) id-val)
                       ((stringp id-val) (or (handler-case (parse-integer id-val :junk-allowed t)
@@ -75,7 +97,7 @@ function validatePostForm(form, errorId) {
             (:p "We were unable to process your post because it does not meet the validation requirements.")
             (:p (:button :class "error-back-button" :onclick "history.back();" "← Go Back and Edit Post")))
       (:hr)
-      (:p :class "footer" "SchemeBBS Common Lisp port"))))
+      (cl-who:str (render-footer-html)))))
 
 (defun render-boards-header ()
   (let* ((sexp-dir (merge-pathnames "sexp/" cl-bbs/storage:*base-dir*))
@@ -333,7 +355,7 @@ and the new thread form, using layout THEME."
             do (cl-who:htm (cl-who:str (render-frontpage-thread board t-data i theme))))
       (cl-who:str (render-thread-form board))
       (:hr)
-      (:p :class "footer" "SchemeBBS Common Lisp port"))))
+      (cl-who:str (render-footer-html)))))
 
 (defun render-list (board threads &optional theme)
   "Renders the board thread-list HTML page, showing all THREADS in tabular format, using layout THEME."
@@ -358,7 +380,7 @@ and the new thread form, using layout THEME."
                                 (:td (cl-who:str (format nil "~a" messages)))
                                 (:td (:samp (cl-who:esc date)))))))))
       (:hr)
-      (:p :class "footer" "SchemeBBS Common Lisp port"))))
+      (cl-who:str (render-footer-html)))))
 
 (defun render-thread (board thread-id thread-data &optional range-string theme)
   "Renders a single thread page HTML for THREAD-ID under BOARD with THREAD-DATA (comments),
@@ -433,7 +455,7 @@ optionally filtered by RANGE-STRING, using layout THEME."
                   (cl-who:str (format nil "~a" next-post-number))))
          (:dd (cl-who:str (render-post-form board thread-id))))
         (:hr)
-        (:p :class "footer" "SchemeBBS Common Lisp port")))))
+        (cl-who:str (render-footer-html))))))
 
 (defun render-preferences (board &optional theme default-board)
   "Renders the board preferences HTML page, allowing users to choose a custom stylesheet THEME and a default-board."
@@ -484,7 +506,7 @@ function updateThemePreview(themeValue) {
 }
 ")
         (:hr)
-        (:p :class "footer" "SchemeBBS Common Lisp port")))))
+        (cl-who:str (render-footer-html))))))
 
 (defun render-moderation (boards &optional board threads thread comments theme headline)
   "Renders the admin/moderation control panel HTML page showing BOARDS and allowing deletions/edits."

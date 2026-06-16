@@ -20,8 +20,10 @@ install-deps:
 server:
 	./roswell/cl-bbs-server.ros
 
-docker-build:
-	docker build --build-arg APP_VERSION=$(APP_VERSION) -t $(DOCKER_IMG) .
+docker-build: dockerbuild
+
+dockerbuild:
+	docker build --build-arg APP_VERSION=$(APP_VERSION) --build-arg APP_COMMIT_HASH=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown") -t $(DOCKER_IMG) .
 
 docker-shell: docker-build
 	docker run --rm -it --entrypoint=/bin/bash $(DOCKER_IMG)
