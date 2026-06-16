@@ -32,7 +32,9 @@
        (:title (cl-who:esc ,title))
        (:link :rel "manifest" :href "/manifest.json")
        (:link :rel "icon" :href "/static/favicon.ico" :type "image/png")
-       (:link :rel "stylesheet" :href (format nil "/static/styles/themes/~a.css" (or ,theme "default")) :type "text/css")
+       (:link :rel "stylesheet"
+              :href (format nil "/static/styles/themes/~a.css" (or ,theme "default"))
+              :type "text/css")
        (:script "if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js');
@@ -109,7 +111,7 @@ function validatePostForm(form, errorId) {
         " - "
         (:a :href (format nil "/~a/preferences" board) "preferences")
         " - "
-        (:a :href "/" "?"))))
+        (:a :href "/index.html" "?"))))
 
 (defun render-thread-form (board)
   (cl-who:with-html-output-to-string (s nil :indent t)
@@ -433,28 +435,44 @@ optionally filtered by RANGE-STRING, using layout THEME."
         (:hr)
         (:p :class "footer" "SchemeBBS Common Lisp port")))))
 
-(defun render-preferences (board &optional theme)
-  "Renders the board preferences HTML page, allowing users to choose a custom stylesheet THEME."
-  (layout (format nil "/~a/ - Preferences" board) "preferences" theme
-    (cl-who:with-html-output-to-string (s nil :indent t)
-      (:h1 (cl-who:esc board))
-      (cl-who:str (render-menu board "preferences"))
-      (:hr)
-      (:h2 "Preferences")
-      (:form :action (format nil "/~a/preferences" board) :method "POST" :class "preferences-form"
-             (:p :class "theme-options-title" "Choose theme:")
-             (:div :class "theme-selector-container"
-                   (dolist (item '("default" "dark" "no" "colored" "matrix"))
-                     (cl-who:htm
-                      (:label :class "theme-option-label"
-                              (:input :type "radio"
-                                      :name "theme"
-                                      :value item
-                                      :checked (and theme (string= theme item))
-                                      :onchange "updateThemePreview(this.value)")
-                              (:span :class "theme-option-text" (cl-who:str item))))))
-             (:p (:input :type "submit" :value "Save Preferences")))
-      (:script "
+(defun render-preferences (board &optional theme default-board)
+  "Renders the board preferences HTML page, allowing users to choose a custom stylesheet THEME and a default-board."
+  (let* ((sexp-dir (merge-pathnames "sexp/" cl-bbs/storage:*base-dir*))
+         (paths (and (probe-file sexp-dir) (uiop:subdirectories sexp-dir)))
+         (boards (sort (mapcar (lambda (path)
+                                 (car (last (pathname-directory path))))
+                               paths)
+                       #'string<)))
+    (layout (format nil "/~a/ - Preferences" board) "preferences" theme
+      (cl-who:with-html-output-to-string (s nil :indent t)
+        (:h1 (cl-who:esc board))
+        (cl-who:str (render-menu board "preferences"))
+        (:hr)
+        (:h2 "Preferences")
+        (:form :action (format nil "/~a/preferences" board) :method "POST" :class "preferences-form"
+               (:p :class "theme-options-title" "Choose theme:")
+               (:div :class "theme-selector-container"
+                     (dolist (item '("default" "dark" "no" "colored" "matrix"))
+                       (cl-who:htm
+                        (:label :class "theme-option-label"
+                                (:input :type "radio"
+                                        :name "theme"
+                                        :value item
+                                        :checked (and theme (string= theme item))
+                                        :onchange "updateThemePreview(this.value)")
+                                (:span :class "theme-option-text" (cl-who:str item))))))
+               (:p :class "board-options-title" "Choose default board:")
+               (:div :class "board-selector-container"
+                     (:select :name "default_board"
+                              (:option :value ""
+                                       :selected (or (null default-board) (string= default-board ""))
+                                       "None (Main Page)")
+                              (dolist (item boards)
+                                (cl-who:htm
+                                 (:option :value item :selected (and default-board (string= default-board item))
+                                          (cl-who:str (format nil "/~a/" item)))))))
+               (:p (:input :type "submit" :value "Save Preferences")))
+        (:script "
 function updateThemePreview(themeValue) {
   // Find all stylesheet links
   const links = document.querySelectorAll('link[rel=\"stylesheet\"]');
@@ -465,8 +483,8 @@ function updateThemePreview(themeValue) {
   }
 }
 ")
-      (:hr)
-      (:p :class "footer" "SchemeBBS Common Lisp port"))))
+        (:hr)
+        (:p :class "footer" "SchemeBBS Common Lisp port")))))
 
 (defun render-moderation (boards &optional board threads thread comments theme headline)
   "Renders the admin/moderation control panel HTML page showing BOARDS and allowing deletions/edits."
