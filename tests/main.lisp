@@ -115,7 +115,7 @@
   (let* ((env (list :path-info "/foo" :request-method :get))
          (res (cl-bbs/handlers:handle-request env))
          (html-body (first (third res))))
-    (is equal t (not (null (search "SchemeBBS Common Lisp port (" html-body))))
+    (is equal t (not (null (search "cl-bbs version:" html-body))))
     (is equal t (not (null (search "github.com/ryukinix/cl-bbs" html-body)))))
 
   ;; 1. GET Root /

@@ -20,26 +20,22 @@
   (let ((env-hash (uiop:getenv "APP_COMMIT_HASH")))
     (if (and env-hash (string/= env-hash ""))
         env-hash
-        (or (ignore-errors
-             (string-trim '(#\Space #\Tab #\Newline #\Return)
-                          (uiop:run-program '("git" "rev-parse" "--short" "HEAD")
-                                            :output :string)))
+        (or (handler-case
+                (string-trim '(#\Space #\Tab #\Newline #\Return)
+                             (uiop:run-program '("git" "rev-parse" "--short" "HEAD")
+                                               :output :string))
+              (error () nil))
             "unknown"))))
 
 (defun render-footer-html ()
-  "Renders the common footer HTML with SchemeBBS port attribution, git commit hash, and a GitHub link."
+  "Renders the common footer HTML with cl-bbs version hash and a GitHub link."
   (let ((hash (get-git-commit-hash)))
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:p :class "footer"
-          "SchemeBBS Common Lisp port ("
+          "cl-bbs version:"
           (:a :href (format nil "https://github.com/ryukinix/cl-bbs/commit/~a" hash)
               :target "_blank"
-              (cl-who:fmt "commit ~a" hash))
-          " | "
-          (:a :href "https://github.com/ryukinix/cl-bbs"
-              :target "_blank"
-              "GitHub")
-          ")"))))
+              (cl-who:esc hash))))))
 
 (defun get-hash-hue (id-val)
   (let ((id-num (cond ((integerp id-val) id-val)
