@@ -9,6 +9,8 @@ COPY ./roswell roswell
 
 ARG APP_VERSION
 ENV APP_VERSION=$APP_VERSION
+ARG APP_COMMIT_HASH
+ENV APP_COMMIT_HASH=$APP_COMMIT_HASH
 ENV SBBS_DATADIR=/cl-bbs/data/
 ENV SBBS_STATIC_DIR=/cl-bbs/src/static/
 ENV SBBS_INDEX_FILE=/cl-bbs/src/static/index.html

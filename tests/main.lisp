@@ -111,6 +111,13 @@
   ;; Ensure board dirs are created for testing board 'foo'
   (cl-bbs/storage:ensure-board-dirs "foo")
 
+  ;; 0. Test footer renders with commit link
+  (let* ((env (list :path-info "/foo" :request-method :get))
+         (res (cl-bbs/handlers:handle-request env))
+         (html-body (first (third res))))
+    (is equal t (not (null (search "SchemeBBS Common Lisp port (" html-body))))
+    (is equal t (not (null (search "github.com/ryukinix/cl-bbs" html-body)))))
+
   ;; 1. GET Root /
   (let* ((env (list :path-info "/" :request-method :get))
          (res (cl-bbs/handlers:handle-request env)))
