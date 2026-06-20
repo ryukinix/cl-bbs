@@ -324,12 +324,14 @@ function validatePostForm(form, errorId) {
                (let ((fst (1+ prev-id))
                      (lst (1- post-id)))
                  (cl-who:htm
-                  (:dt :class "collapsed" :style "margin: 0.5em 2%;"
+                  (:dt :class "collapsed" :style "margin: 0.5em 2%; margin-left: 0; padding-left: 0;"
                        (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id fst)
                            (cl-who:str (format nil "~D" fst)))
-                       "..."
-                       (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id lst)
-                           (cl-who:str (format nil "~D" lst)))))))
+                       (when (> lst fst)
+                         (cl-who:htm
+                          (cl-who:str "...")
+                          (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id lst)
+                              (cl-who:str (format nil "~D" lst)))))))))
              (setf prev-id post-id)
              (let ((post-style (if (string= theme "colored")
                                    (let ((hue (get-hash-hue post-id)))
@@ -342,13 +344,15 @@ function validatePostForm(form, errorId) {
                                              hue hue))
                                    "")))
                (cl-who:htm
-                (:dt (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
+                (:dt :style "margin: 0.5em 2%; margin-left: 0; padding-left: 0;"
+                     (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
                          :id (format nil "t~ap~a" thread-id post-id)
                          (cl-who:str (format nil "~a" post-id)))
                      " "
                      (:samp (cl-who:esc date)))
                 (:dd :style post-style (cl-who:str (format-text content thread-id))))))))
-       (:dt (:a :href (format nil "#t~ap~a" thread-id next-post-number)
+       (:dt :style "margin: 0.5em 2%; margin-left: 0; padding-left: 0;"
+            (:a :href (format nil "#t~ap~a" thread-id next-post-number)
                 :id (format nil "t~ap~a" thread-id next-post-number)
                 (cl-who:str (format nil "~a" next-post-number))))
        (:dd (cl-who:str (render-post-form board thread-id))))
