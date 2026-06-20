@@ -44,7 +44,8 @@
 
 (defun latest-posts (posts)
   (if (> (length posts) 6)
-      `((cl-bbs/models:truncated . t) (cl-bbs/models:posts ,(cons (car posts) (take-right posts 5))))
+      `((cl-bbs/models:truncated . ,(mapcar #'car (butlast (cdr posts) 5)))
+        (cl-bbs/models:posts ,(cons (car posts) (take-right posts 5))))
       `((cl-bbs/models:truncated . nil) (cl-bbs/models:posts ,posts))))
 
 (defun get-flat-posts (posts)
