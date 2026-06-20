@@ -298,7 +298,6 @@ function validatePostForm(form, errorId) {
          (posts (second (assoc 'cl-bbs/models:posts props)))
          (next-post-number (if posts (1+ (reduce #'max posts :key #'car :initial-value 0)) 1))
          (truncated (cdr (assoc 'cl-bbs/models:truncated props))))
-    (declare (ignore truncated))
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:pre :class "jump"
             (:a :id (format nil "d~a" index)
@@ -314,29 +313,52 @@ function validatePostForm(form, errorId) {
          (:h2 :style heading-style
               (:a :href (format nil "/~a/~a" board thread-id) (cl-who:esc headline)))))
       (:dl
-       (loop for post in posts
-             for post-id = (car post)
-             for post-data = (cdr post)
-             for content = (cdr (assoc 'cl-bbs/models:content post-data))
-             for date = (cdr (assoc 'cl-bbs/models:date post-data))
-             do (let ((post-style (if (string= theme "colored")
-                                      (let ((hue (get-hash-hue post-id)))
-                                        (format nil (concatenate 'string
-                                                                 "background-color: hsl(~D, 85%, 96%); "
-                                                                 "border-left: 4px solid hsl(~D, 85%, 45%); "
-                                                                 "padding: 0.5em 1em; "
-                                                                 "margin: 0.3em 2% 1.2em 2%; "
-                                                                 "border-radius: 0 4px 4px 0;")
-                                                hue hue))
-                                      "")))
-                  (cl-who:htm
-                   (:dt (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
-                            :id (format nil "t~ap~a" thread-id post-id)
-                            (cl-who:str (format nil "~a" post-id)))
-                        " "
-                        (:samp (cl-who:esc date)))
-                   (:dd :style post-style (cl-who:str (format-text content thread-id))))))
-       (:dt (:a :href (format nil "#t~ap~a" thread-id next-post-number)
+       (let ((prev-id nil))
+         (dolist (post posts)
+           (let* ((post-id (car post))
+                  (post-data (cdr post))
+                  (content (cdr (assoc 'cl-bbs/models:content post-data)))
+                  (date (cdr (assoc 'cl-bbs/models:date post-data))))
+             (when (and prev-id (> post-id (1+ prev-id)))
+               ;; Instead of hard assumption based just on IDs, actually check via truncated list if the missing IDs are meant to be rendered as collapsed (i.e. they actually exist in the background).
+               ;; Find the maximum contiguous subsegment of truncated IDs bridging prev-id and post-id.
+               (let* ((missing-ids (loop for id from (1+ prev-id) to (1- post-id) collect id))
+                      (actual-missing (if (listp truncated)
+                                          (remove-if-not (lambda (id) (member id truncated)) missing-ids)
+                                          missing-ids)))
+                 (when (>= (length actual-missing) 2)
+                   (let ((fst (car actual-missing))
+                         (lst (car (last actual-missing))))
+                     (cl-who:htm
+                      (:dt :class "collapsed" :style "margin: 0.5em 2%; margin-left: 0; padding-left: 0;"
+                           (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id fst)
+                               (cl-who:str (format nil "~D" fst)))
+                           (when (> lst fst)
+                             (cl-who:htm
+                              (cl-who:str "...")
+                              (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id lst)
+                                  (cl-who:str (format nil "~D" lst)))))))))))
+             (setf prev-id post-id)
+             (let ((post-style (if (string= theme "colored")
+                                   (let ((hue (get-hash-hue post-id)))
+                                     (format nil (concatenate 'string
+                                                              "background-color: hsl(~D, 85%, 96%); "
+                                                              "border-left: 4px solid hsl(~D, 85%, 45%); "
+                                                              "padding: 0.5em 1em; "
+                                                              "margin: 0.3em 2% 1.2em 2%; "
+                                                              "border-radius: 0 4px 4px 0;")
+                                             hue hue))
+                                   "")))
+               (cl-who:htm
+                (:dt :style "margin: 0.5em 2%; margin-left: 0; padding-left: 0;"
+                     (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
+                         :id (format nil "t~ap~a" thread-id post-id)
+                         (cl-who:str (format nil "~a" post-id)))
+                     " "
+                     (:samp (cl-who:esc date)))
+                (:dd :style post-style (cl-who:str (format-text content thread-id))))))))
+       (:dt :style "margin: 0.5em 2%; margin-left: 0; padding-left: 0;"
+            (:a :href (format nil "#t~ap~a" thread-id next-post-number)
                 :id (format nil "t~ap~a" thread-id next-post-number)
                 (cl-who:str (format nil "~a" next-post-number))))
        (:dd (cl-who:str (render-post-form board thread-id))))
