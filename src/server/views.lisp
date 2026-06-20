@@ -324,11 +324,11 @@ function validatePostForm(form, errorId) {
                (let ((fst (1+ prev-id))
                      (lst (1- post-id)))
                  (cl-who:htm
-                  (:dt :class "collapsed" :style "margin: 0.5em 2%; font-style: italic;"
-                       (:a :href (format nil "/~a/~a/~a" board thread-id fst)
+                  (:dt :class "collapsed" :style "margin: 0.5em 2%;"
+                       (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id fst)
                            (cl-who:str (format nil "~D" fst)))
                        "..."
-                       (:a :href (format nil "/~a/~a/~a" board thread-id lst)
+                       (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id lst)
                            (cl-who:str (format nil "~D" lst)))))))
              (setf prev-id post-id)
              (let ((post-style (if (string= theme "colored")
