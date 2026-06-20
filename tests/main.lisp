@@ -209,6 +209,14 @@
       (is = 200 (first res))
       (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
       (is equal t (not (null (search "Mock Thread" (first (third res)))))))
+
+    ;; Test range-based comment retrieval for single post "1"
+    (let* ((env (list :path-info "/foo/1/1" :request-method :get))
+           (res (cl-bbs/handlers:handle-request env)))
+      (is = 200 (first res))
+      (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
+      (is equal t (not (null (search "This is a test post" (first (third res)))))))
+
     (when (probe-file thread-path)
       (delete-file thread-path))))
 

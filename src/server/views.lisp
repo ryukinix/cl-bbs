@@ -314,28 +314,40 @@ function validatePostForm(form, errorId) {
          (:h2 :style heading-style
               (:a :href (format nil "/~a/~a" board thread-id) (cl-who:esc headline)))))
       (:dl
-       (loop for post in posts
-             for post-id = (car post)
-             for post-data = (cdr post)
-             for content = (cdr (assoc 'cl-bbs/models:content post-data))
-             for date = (cdr (assoc 'cl-bbs/models:date post-data))
-             do (let ((post-style (if (string= theme "colored")
-                                      (let ((hue (get-hash-hue post-id)))
-                                        (format nil (concatenate 'string
-                                                                 "background-color: hsl(~D, 85%, 96%); "
-                                                                 "border-left: 4px solid hsl(~D, 85%, 45%); "
-                                                                 "padding: 0.5em 1em; "
-                                                                 "margin: 0.3em 2% 1.2em 2%; "
-                                                                 "border-radius: 0 4px 4px 0;")
-                                                hue hue))
-                                      "")))
-                  (cl-who:htm
-                   (:dt (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
-                            :id (format nil "t~ap~a" thread-id post-id)
-                            (cl-who:str (format nil "~a" post-id)))
-                        " "
-                        (:samp (cl-who:esc date)))
-                   (:dd :style post-style (cl-who:str (format-text content thread-id))))))
+       (let ((prev-id nil))
+         (dolist (post posts)
+           (let* ((post-id (car post))
+                  (post-data (cdr post))
+                  (content (cdr (assoc 'cl-bbs/models:content post-data)))
+                  (date (cdr (assoc 'cl-bbs/models:date post-data))))
+             (when (and prev-id (> post-id (1+ prev-id)))
+               (let ((fst (1+ prev-id))
+                     (lst (1- post-id)))
+                 (cl-who:htm
+                  (:dt :class "collapsed" :style "margin: 0.5em 2%; font-style: italic;"
+                       (:a :href (format nil "/~a/~a/~a" board thread-id fst)
+                           (cl-who:str (format nil "~D" fst)))
+                       "..."
+                       (:a :href (format nil "/~a/~a/~a" board thread-id lst)
+                           (cl-who:str (format nil "~D" lst)))))))
+             (setf prev-id post-id)
+             (let ((post-style (if (string= theme "colored")
+                                   (let ((hue (get-hash-hue post-id)))
+                                     (format nil (concatenate 'string
+                                                              "background-color: hsl(~D, 85%, 96%); "
+                                                              "border-left: 4px solid hsl(~D, 85%, 45%); "
+                                                              "padding: 0.5em 1em; "
+                                                              "margin: 0.3em 2% 1.2em 2%; "
+                                                              "border-radius: 0 4px 4px 0;")
+                                             hue hue))
+                                   "")))
+               (cl-who:htm
+                (:dt (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
+                         :id (format nil "t~ap~a" thread-id post-id)
+                         (cl-who:str (format nil "~a" post-id)))
+                     " "
+                     (:samp (cl-who:esc date)))
+                (:dd :style post-style (cl-who:str (format-text content thread-id))))))))
        (:dt (:a :href (format nil "#t~ap~a" thread-id next-post-number)
                 :id (format nil "t~ap~a" thread-id next-post-number)
                 (cl-who:str (format nil "~a" next-post-number))))
