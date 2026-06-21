@@ -794,8 +794,9 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
   (let* ((headers (getf env :headers))
          (ip (and headers (gethash "cf-connecting-ip" headers))))
     (when ip
-      (with-open-file (stream "cl-bbs.log" :direction :output
-                                           :if-exists :append
-                                           :if-does-not-exist :create)
-        (format stream "~A | ~A~%" ip action-path)
+      (let ((log-file (uiop:getenv "SBBS_LOG_FILE")))
+        (with-open-file (stream (or log-file "/cl-bbs/data/cl-bbs.log") :direction :output
+                                             :if-exists :append
+                                             :if-does-not-exist :create)
+          (format stream "~A | ~A~%" ip action-path))
         (format t "~A | ~A~%" ip action-path)))))
