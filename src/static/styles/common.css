@@ -167,6 +167,17 @@ body.moderation input[type=submit].delete-button:hover {
   color: white !important;
 }
 
+body.moderation input[type=submit].shame-button {
+  color: #ff9900 !important;
+  border-color: #ff9900 !important;
+  cursor: pointer;
+}
+
+body.moderation input[type=submit].shame-button:hover {
+  background-color: #ff9900 !important;
+  color: white !important;
+}
+
 body.moderation .comment-preview {
   margin-bottom: 0.5em;
   padding: 0.5em;

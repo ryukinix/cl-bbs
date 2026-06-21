@@ -764,7 +764,17 @@ function updateThemePreview(themeValue) {
                                              (:input :type "submit" :value "Delete Thread" :class "delete-button"
                                                      :onclick (concatenate 'string
                                                                            "return confirm('Are you sure you want "
-                                                                           "to delete this thread?');")))))))))))
+                                                                           "to delete this thread?');")))
+                                      (unless (string-equal board "shame")
+                                        (cl-who:htm
+                                         (:form :action "/admin/action" :method "POST" :style "display:inline; margin-left: 5px;"
+                                                (:input :type "hidden" :name "action" :value "shame-thread")
+                                                (:input :type "hidden" :name "board" :value board)
+                                                (:input :type "hidden" :name "thread" :value tid)
+                                                (:input :type "submit" :value "Shame" :class "shame-button"
+                                                        :onclick (concatenate 'string
+                                                                              "return confirm('Are you sure you want "
+                                                                              "to move this thread to the shame board?');")))))))))))))
              (cl-who:htm (:p "No threads found on this board.")))))
       (when (and board thread)
         (cl-who:htm
