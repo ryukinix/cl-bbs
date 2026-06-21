@@ -495,7 +495,8 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                         (when posts-assoc
                           (setf comments (get-flat-posts posts-assoc)))))))
                 `(200 (:content-type "text/html; charset=utf-8")
-                      (,(render-moderation boards board threads thread-id-str comments cl-bbs/views:*preferences* headline))))))))
+                      (,(render-moderation boards board threads thread-id-str comments
+                                           cl-bbs/views:*preferences* headline))))))))
 
 ;; 4. POST /admin/action (Admin Actions)
 (setf (ningle:route *app* "/admin/action" :method :POST)
@@ -635,11 +636,13 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                 (when (is-board-locked board)
                   (return-from out
                     `(403 (:content-type "text/html; charset=utf-8")
-                          (,(render-error-page "This board is read-only" cl-bbs/views:*preferences*)))))
+                          (,(render-error-page "This board is read-only"
+                                               cl-bbs/views:*preferences*)))))
                 (unless (probe-file (merge-pathnames (format nil "sexp/~a/" board) *base-dir*))
                    (return-from out
                      `(403 (:content-type "text/html; charset=utf-8")
-                           (,(render-error-page "Only administrators can create new boards" cl-bbs/views:*preferences*)))))
+                           (,(render-error-page "Only administrators can create new boards"
+                                                cl-bbs/views:*preferences*)))))
                 (ensure-board-dirs board)
                 (create-thread thread-path titulus date epistula)
                 (add-thread-to-list list-path thread-number titulus date)
