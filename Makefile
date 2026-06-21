@@ -55,5 +55,5 @@ deploy: publish
 	ssh starfox -t deploy apply cl-bbs
 
 deploy-remote:
-	git push starfox:Desktop/workspace/cl-bbs
-	ssh starfox -t "cd Desktop/workspace/cl-bbs && make deploy"
+	git push starfox:Desktop/workspace/cl-bbs $(shell git rev-parse --abbrev-ref HEAD)
+	ssh starfox -t "cd Desktop/workspace/cl-bbs && git checkout $(shell git rev-parse --abbrev-ref HEAD) && git reset --hard && make deploy"

@@ -64,3 +64,45 @@
          (env (list :query-string "theme=../../malicious" :headers headers)))
     (setf (gethash "cookie" headers) "theme=dark")
     (is equal "dark" (cl-bbs/handlers::get-theme-from-env env))))
+
+(define-test test-search-posts
+  :parent unit
+  ;; Ensure board dirs are created for testing board 'searchtest'
+  (cl-bbs/storage:ensure-board-dirs "searchtest")
+  (let ((thread-path (merge-pathnames "sexp/searchtest/1" cl-bbs/storage:*base-dir*))
+        (thread-data '((cl-bbs/models:headline . "Unicorns and Rainbows")
+                        (cl-bbs/models:posts . ((1 (cl-bbs/models:date . "2026-06-12")
+                                                    (cl-bbs/models:vip . nil)
+                                                    (cl-bbs/models:content . "I love magical creatures!")))))))
+    (cl-bbs/storage:write-sexp-file thread-path thread-data)
+    (unwind-protect
+         (progn
+           ;; 1. Search for a query that matches the content
+           (let ((res1 (cl-bbs/handlers::search-posts "magical")))
+             (is = 1 (length res1))
+             (is equal "searchtest" (getf (first res1) :board))
+             (is equal "Unicorns and Rainbows" (getf (first res1) :headline))
+             (is equal "I love magical creatures!" (getf (first res1) :content)))
+
+           ;; 2. Search for a query that matches the headline
+           (let ((res2 (cl-bbs/handlers::search-posts "unicorn")))
+             (is = 1 (length res2))
+             (is equal "1" (getf (first res2) :thread-id)))
+
+           ;; 3. Search with board filter
+           (let ((res3 (cl-bbs/handlers::search-posts "magical" "searchtest")))
+             (is = 1 (length res3)))
+
+           ;; 4. Search with board filter that doesn't match
+           (let ((res4 (cl-bbs/handlers::search-posts "magical" "nonexistent")))
+             (is = 0 (length res4)))
+
+           ;; 5. Search for a query that does not exist
+           (let ((res5 (cl-bbs/handlers::search-posts "impossible-query")))
+             (is = 0 (length res5))))
+      (when (probe-file thread-path)
+        (delete-file thread-path))
+      ;; Delete the board directory created
+      (let ((board-dir (merge-pathnames "sexp/searchtest/" cl-bbs/storage:*base-dir*)))
+        (when (probe-file board-dir)
+          (uiop:delete-directory-tree board-dir :validate t))))))

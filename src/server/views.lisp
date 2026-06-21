@@ -11,9 +11,27 @@
            #:render-thread
            #:render-preferences
            #:render-moderation
-           #:render-error-page))
+           #:render-error-page
+           #:render-search-results
+           #:preferences
+           #:make-preferences
+           #:preferences-theme
+           #:preferences-default-board
+           #:preferences-search-hide-input
+           #:preferences-search-local-only
+           #:preferences-search-position
+           #:*preferences*))
 
 (in-package :cl-bbs/views)
+
+(defstruct preferences
+  (theme "default")
+  (default-board "")
+  (search-hide-input "no")
+  (search-local-only "no")
+  (search-position "top"))
+
+(defvar *preferences* (make-preferences))
 
 (defun get-git-commit-hash ()
   "Gets the git commit hash from environmental dynamics (APP_COMMIT_HASH) with a fallback to uiop:run-program."
@@ -84,11 +102,15 @@ function validatePostForm(form, errorId) {
       (:body :class ,class
              (cl-who:str (render-boards-header))
              (:hr)
-             (cl-who:str (progn ,@body))))))
+             (cl-who:str (progn ,@body))
+             (when (show-search-at-bottom-p)
+               (cl-who:htm
+                (:hr)
+                (cl-who:str (render-search-form))))))))
 
-(defun render-error-page (error-message &optional theme)
-  "Renders an HTML error page displaying the given ERROR-MESSAGE, using the specified layout THEME."
-  (layout "Error - SchemeBBS" "error-page" theme
+(defun render-error-page (error-message &optional (prefs *preferences*))
+  "Renders an HTML error page displaying the given ERROR-MESSAGE, using the specified layout PREFS."
+  (layout "Error - SchemeBBS" "error-page" (preferences-theme prefs)
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:h1 "Error")
       (:hr)
@@ -99,35 +121,90 @@ function validatePostForm(form, errorId) {
       (:hr)
       (cl-who:str (render-footer-html)))))
 
+(defun board-view-p (path)
+  "Checks if the given PATH represents a board-specific view."
+  (and path
+       (string/= path "/")
+       (string/= path "/index.html")
+       (not (uiop:string-prefix-p "/search" path))
+       (not (uiop:string-prefix-p "/admin" path))
+       (not (uiop:string-prefix-p "/about" path))
+       (not (uiop:string-prefix-p "/sw.js" path))
+       (not (uiop:string-prefix-p "/manifest.json" path))))
+
+(defun get-current-board-from-path (path)
+  "Extracts the board name from the request PATH."
+  (when (and path (string/= path "") (char= (char path 0) #\/))
+    (let ((parts (cl-ppcre:split "/" path)))
+      (when (>= (length parts) 2)
+        (let ((b (second parts)))
+          (and (string/= b "") b))))))
+
+(defun show-search-at-top-p ()
+  "Determines whether the search form should be rendered at the top header."
+  (let* ((env (and (boundp 'ningle:*request*) ningle:*request* (lack.request:request-env ningle:*request*)))
+         (path (and env (getf env :path-info)))
+         (is-board (board-view-p path)))
+    (and (not (and is-board (string= (preferences-search-hide-input *preferences*) "yes")))
+         (string= (preferences-search-position *preferences*) "top"))))
+
+(defun show-search-at-bottom-p ()
+  "Determines whether the search form should be rendered at the bottom of the page."
+  (and (not (string= (preferences-search-hide-input *preferences*) "yes"))
+       (string= (preferences-search-position *preferences*) "bottom")))
+
+(defun render-search-form ()
+  "Renders the search form as a standalone block, with board filter if local search is configured."
+  (let* ((env (and (boundp 'ningle:*request*) ningle:*request* (lack.request:request-env ningle:*request*)))
+         (path (and env (getf env :path-info)))
+         (board (and (board-view-p path) (get-current-board-from-path path))))
+    (cl-who:with-html-output-to-string (s nil :indent t)
+      (:form :action "/search" :method "GET" :style "margin: 1em 2%; display: inline-flex;"
+             (when (and (string= (preferences-search-local-only *preferences*) "yes") board)
+               (cl-who:htm (:input :type "hidden" :name "board" :value board)))
+             (:input :type "text" :name "q" :placeholder "Search posts..." :style "padding: 2px 5px; font-size: 0.85em; margin-right: 5px;")
+             (:input :type "submit" :value "Search" :style "padding: 2px 8px; font-size: 0.85em;")))))
+
 (defun render-boards-header ()
   (let* ((sexp-dir (merge-pathnames "sexp/" cl-bbs/storage:*base-dir*))
          (paths (and (probe-file sexp-dir) (uiop:subdirectories sexp-dir)))
          (boards (sort (mapcar (lambda (path)
                                  (car (last (pathname-directory path))))
                                paths)
-                       #'string<)))
+                       #'string<))
+         (env (and (boundp 'ningle:*request*) ningle:*request* (lack.request:request-env ningle:*request*)))
+         (path (and env (getf env :path-info)))
+         (board (and (board-view-p path) (get-current-board-from-path path))))
     (cl-who:with-html-output-to-string (s nil :indent t)
-      (:p :class "boards" :style "text-align: left; font-size: 0.9em; margin: 0.5em 2% 1em 2%;"
-          "[ "
-          (loop for board in boards
-                for i from 0
-                unless (zerop i)
-                do (cl-who:str " | ")
-                do (cl-who:htm (:a :href (format nil "/~a/" board) (cl-who:esc board))))
-          " ]"))))
+      (:div :style "display: flex; justify-content: space-between; align-items: center; margin: 0.5em 2% 1em 2%;"
+            (:p :class "boards" :style "font-size: 0.9em; margin: 0;"
+                "[ "
+                (loop for board in boards
+                      for i from 0
+                      unless (zerop i)
+                      do (cl-who:str " | ")
+                      do (cl-who:htm (:a :href (format nil "/~a/" board) (cl-who:esc board))))
+                " ]")
+            (when (show-search-at-top-p)
+              (cl-who:htm
+               (:form :action "/search" :method "GET" :style "margin: 0; display: inline-flex;"
+                      (when (and (string= (preferences-search-local-only *preferences*) "yes") board)
+                        (cl-who:htm (:input :type "hidden" :name "board" :value board)))
+                      (:input :type "text" :name "q" :placeholder "Search posts..." :style "padding: 2px 5px; font-size: 0.85em; margin-right: 5px;")
+                      (:input :type "submit" :value "Search" :style "padding: 2px 8px; font-size: 0.85em;"))))))))
 
 (defun render-menu (board selected)
   (cl-who:with-html-output-to-string (s nil :indent t)
     (:p :class "nav"
-        (if (string= selected "frontpage")
-            (cl-who:str "frontpage")
-            (cl-who:htm (:a :href (format nil "/~a" board) "frontpage")))
+        (if (string= selected "front")
+            (cl-who:str "front")
+            (cl-who:htm (:a :href (format nil "/~a" board) "front")))
         " - "
         (if (string= selected "thread list")
             (cl-who:str "thread list")
             (cl-who:htm (:a :href (format nil "/~a/list" board) "thread list")))
         " - "
-        (if (string= selected "frontpage")
+        (if (string= selected "front")
             (cl-who:htm (:a :href "#newthread" "new thread"))
             (cl-who:htm (:a :href (format nil "/~a#newthread" board) "new thread")))
         " - "
@@ -291,13 +368,14 @@ function validatePostForm(form, errorId) {
                  (:input :type "text" :name "message" :class "message" :style "display:none")
                  (:input :type "submit" :value "POST"))))))
 
-(defun render-frontpage-thread (board thread-data index &optional theme)
+(defun render-frontpage-thread (board thread-data index &optional (prefs *preferences*))
   (let* ((thread-id (car thread-data))
          (props (cdr thread-data))
          (headline (cdr (assoc 'cl-bbs/models:headline props)))
          (posts (second (assoc 'cl-bbs/models:posts props)))
          (next-post-number (if posts (1+ (reduce #'max posts :key #'car :initial-value 0)) 1))
-         (truncated (cdr (assoc 'cl-bbs/models:truncated props))))
+         (truncated (cdr (assoc 'cl-bbs/models:truncated props)))
+         (theme (preferences-theme prefs)))
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:pre :class "jump"
             (:a :id (format nil "d~a" index)
@@ -364,24 +442,24 @@ function validatePostForm(form, errorId) {
        (:dd (cl-who:str (render-post-form board thread-id))))
       (:hr))))
 
-(defun render-index (board threads &optional theme)
+(defun render-index (board threads &optional (prefs *preferences*))
   "Renders the board index (frontpage) HTML with the list of active THREADS
-and the new thread form, using layout THEME."
-  (layout (format nil "/~a/ - SchemeBBS" board) nil theme
+and the new thread form, using layout PREFS."
+  (layout (format nil "/~a/ - SchemeBBS" board) nil (preferences-theme prefs)
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:h1 (cl-who:esc board))
-      (cl-who:str (render-menu board "frontpage"))
+      (cl-who:str (render-menu board "front"))
       (:hr)
       (loop for t-data in threads
             for i from 1
-            do (cl-who:htm (cl-who:str (render-frontpage-thread board t-data i theme))))
+            do (cl-who:htm (cl-who:str (render-frontpage-thread board t-data i prefs))))
       (cl-who:str (render-thread-form board))
       (:hr)
       (cl-who:str (render-footer-html)))))
 
-(defun render-list (board threads &optional theme)
-  "Renders the board thread-list HTML page, showing all THREADS in tabular format, using layout THEME."
-  (layout (format nil "/~a/ - SchemeBBS" board) nil theme
+(defun render-list (board threads &optional (prefs *preferences*))
+  "Renders the board thread-list HTML page, showing all THREADS in tabular format, using layout PREFS."
+  (layout (format nil "/~a/ - SchemeBBS" board) nil (preferences-theme prefs)
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:h1 (cl-who:esc board))
       (cl-who:str (render-menu board "thread list"))
@@ -404,10 +482,11 @@ and the new thread form, using layout THEME."
       (:hr)
       (cl-who:str (render-footer-html)))))
 
-(defun render-thread (board thread-id thread-data &optional range-string theme)
+(defun render-thread (board thread-id thread-data &optional range-string (prefs *preferences*))
   "Renders a single thread page HTML for THREAD-ID under BOARD with THREAD-DATA (comments),
-optionally filtered by RANGE-STRING, using layout THEME."
-  (let* ((raw-thread (if (and (consp thread-data)
+optionally filtered by RANGE-STRING, using layout PREFS."
+  (let* ((theme (preferences-theme prefs))
+         (raw-thread (if (and (consp thread-data)
                              (consp (car thread-data))
                              (consp (caar thread-data)))
                          (car thread-data)
@@ -479,14 +558,19 @@ optionally filtered by RANGE-STRING, using layout THEME."
         (:hr)
         (cl-who:str (render-footer-html))))))
 
-(defun render-preferences (board &optional theme default-board)
-  "Renders the board preferences HTML page, allowing users to choose a custom stylesheet THEME and a default-board."
+(defun render-preferences (board &optional (prefs *preferences*))
+  "Renders the board preferences HTML page, allowing users to choose a custom stylesheet THEME, default-board and search configuration."
   (let* ((sexp-dir (merge-pathnames "sexp/" cl-bbs/storage:*base-dir*))
          (paths (and (probe-file sexp-dir) (uiop:subdirectories sexp-dir)))
          (boards (sort (mapcar (lambda (path)
                                  (car (last (pathname-directory path))))
                                paths)
-                       #'string<)))
+                       #'string<))
+         (theme (preferences-theme prefs))
+         (default-board (preferences-default-board prefs))
+         (search-hide-input (preferences-search-hide-input prefs))
+         (search-local-only (preferences-search-local-only prefs))
+         (search-position (preferences-search-position prefs)))
     (layout (format nil "/~a/ - Preferences" board) "preferences" theme
       (cl-who:with-html-output-to-string (s nil :indent t)
         (:h1 (cl-who:esc board))
@@ -494,28 +578,58 @@ optionally filtered by RANGE-STRING, using layout THEME."
         (:hr)
         (:h2 "Preferences")
         (:form :action (format nil "/~a/preferences" board) :method "POST" :class "preferences-form"
-               (:p :class "theme-options-title" "Choose theme:")
-               (:div :class "theme-selector-container"
-                     (dolist (item '("default" "dark" "no" "colored" "matrix"))
-                       (cl-who:htm
-                        (:label :class "theme-option-label"
-                                (:input :type "radio"
-                                        :name "theme"
-                                        :value item
-                                        :checked (and theme (string= theme item))
-                                        :onchange "updateThemePreview(this.value)")
-                                (:span :class "theme-option-text" (cl-who:str item))))))
-               (:p :class "board-options-title" "Choose default board:")
-               (:div :class "board-selector-container"
-                     (:select :name "default_board"
-                              (:option :value ""
-                                       :selected (or (null default-board) (string= default-board ""))
-                                       "None (Main Page)")
-                              (dolist (item boards)
-                                (cl-who:htm
-                                 (:option :value item :selected (and default-board (string= default-board item))
-                                          (cl-who:str (format nil "/~a/" item)))))))
-               (:p (:input :type "submit" :value "Save Preferences")))
+               (:div :style "margin-bottom: 2em;"
+                     (:h3 :style "margin-bottom: 0.5em;" "Style Theme")
+                     (:p :style "color: #555; font-size: 0.9em; margin-bottom: 0.8em;" "Customize the look and feel of the textboard.")
+                     (:div :class "theme-selector-container"
+                           (dolist (item '("default" "dark" "no" "colored" "matrix"))
+                             (cl-who:htm
+                              (:label :class "theme-option-label" :style "margin-right: 15px;"
+                                      (:input :type "radio"
+                                              :name "theme"
+                                              :value item
+                                              :checked (and theme (string= theme item))
+                                              :onchange "updateThemePreview(this.value)")
+                                      (:span :class "theme-option-text" (cl-who:str item)))))))
+
+               (:div :style "margin-bottom: 2em;"
+                     (:h3 :style "margin-bottom: 0.5em;" "Default Board")
+                     (:p :style "color: #555; font-size: 0.9em; margin-bottom: 0.8em;" "Select the board you land on when visiting the root domain.")
+                     (:div :class "board-selector-container"
+                           (:select :name "default_board" :style "padding: 4px; font-size: 0.95em;"
+                                    (:option :value ""
+                                             :selected (or (null default-board) (string= default-board ""))
+                                             "None (Main Page)")
+                                    (dolist (item boards)
+                                      (cl-who:htm
+                                       (:option :value item :selected (and default-board (string= default-board item))
+                                                (cl-who:str (format nil "/~a/" item))))))))
+
+               (:div :style "margin-bottom: 2em;"
+                     (:h3 :style "margin-bottom: 0.5em;" "Search Settings")
+                     (:p :style "color: #555; font-size: 0.9em; margin-bottom: 0.8em;" "Configure how the search bar behaves on board indices and thread views.")
+                     (:div :class "search-preferences-container" :style "line-height: 1.8em;"
+                           (:div :style "margin-bottom: 0.8em;"
+                                 (:label :style "font-weight: bold;" "Hide search input in board view: ")
+                                 (:br)
+                                 (:select :name "search_hide_input" :style "padding: 4px; font-size: 0.95em;"
+                                          (:option :value "no" :selected (string= search-hide-input "no") "No")
+                                          (:option :value "yes" :selected (string= search-hide-input "yes") "Yes")))
+                           (:div :style "margin-bottom: 0.8em;"
+                                 (:label :style "font-weight: bold;" "Only make local searches in the current board: ")
+                                 (:br)
+                                 (:select :name "search_local_only" :style "padding: 4px; font-size: 0.95em;"
+                                          (:option :value "no" :selected (string= search-local-only "no") "No (Global)")
+                                          (:option :value "yes" :selected (string= search-local-only "yes") "Yes (Local)")))
+                           (:div :style "margin-bottom: 0.8em;"
+                                 (:label :style "font-weight: bold;" "Placement of search input: ")
+                                 (:br)
+                                 (:select :name "search_position" :style "padding: 4px; font-size: 0.95em;"
+                                          (:option :value "top" :selected (string= search-position "top") "Top (Header)")
+                                          (:option :value "bottom" :selected (string= search-position "bottom") "Bottom (Footer)")))))
+
+               (:p :style "margin-top: 2em;"
+                   (:input :type "submit" :value "Save Preferences" :style "padding: 6px 16px; font-size: 1em; cursor: pointer; font-weight: bold; background-color: #ededed; border: 1px solid #bababa; border-radius: 4px;")))
         (:script "
 function updateThemePreview(themeValue) {
   // Find all stylesheet links
@@ -530,34 +644,35 @@ function updateThemePreview(themeValue) {
         (:hr)
         (cl-who:str (render-footer-html))))))
 
-(defun render-moderation (boards &optional board threads thread comments theme headline)
+(defun render-moderation (boards &optional board threads thread comments (prefs *preferences*) headline)
   "Renders the admin/moderation control panel HTML page showing BOARDS and allowing deletions/edits."
-  (layout "cl-bbs Moderation Panel" "moderation" theme
-    (cl-who:with-html-output-to-string (s nil :indent t)
-      (:h1 "Moderation Panel")
-      (:p (:a :href "/" "Back to Home"))
-      (:hr)
-      (:h2 "Boards")
-      (:ul
-       (dolist (b boards)
-         (cl-who:htm
-          (:li (:strong (:a :href (format nil "/admin?board=~a" b) (cl-who:esc b)))
-               " &nbsp; "
-               (:form :action "/admin/action" :method "POST" :style "display:inline;"
-                      (:input :type "hidden" :name "action" :value "delete-board")
-                      (:input :type "hidden" :name "board" :value b)
-                      (:input :type "submit" :value "Delete Board" :class "delete-button"
-                              :onclick (concatenate 'string
-                                                    "return confirm('Are you sure you want to delete the ENTIRE board? "
-                                                    "This cannot be undone.');")))))))
-      (when board
-        (cl-who:htm
-         (:hr)
-         (:h2 (cl-who:fmt "Threads in /~a/" board))
-         (if threads
-             (cl-who:htm
-              (:table :border 1 :cellpadding 5
-                      (:thead (:tr (:th "ID") (:th "Headline") (:th "Date") (:th "Actions")))
+  (let ((theme (preferences-theme prefs)))
+    (layout "cl-bbs Moderation Panel" "moderation" theme
+      (cl-who:with-html-output-to-string (s nil :indent t)
+        (:h1 "Moderation Panel")
+        (:p (:a :href "/" "Back to Home"))
+        (:hr)
+        (:h2 "Boards")
+        (:ul
+         (dolist (b boards)
+           (cl-who:htm
+            (:li (:strong (:a :href (format nil "/admin?board=~a" b) (cl-who:esc b)))
+                 " &nbsp; "
+                 (:form :action "/admin/action" :method "POST" :style "display:inline;"
+                        (:input :type "hidden" :name "action" :value "delete-board")
+                        (:input :type "hidden" :name "board" :value b)
+                        (:input :type "submit" :value "Delete Board" :class "delete-button"
+                                :onclick (concatenate 'string
+                                                      "return confirm('Are you sure you want to delete the ENTIRE board? "
+                                                      "This cannot be undone.');")))))))
+        (when board
+          (cl-who:htm
+           (:hr)
+           (:h2 (cl-who:fmt "Threads in /~a/" board))
+           (if threads
+               (cl-who:htm
+                (:table :border 1 :cellpadding 5
+                        (:thead (:tr (:th "ID") (:th "Headline") (:th "Date") (:th "Actions")))
                       (:tbody
                        (dolist (t-data threads)
                          (let* ((tid (car t-data))
@@ -615,4 +730,50 @@ function updateThemePreview(themeValue) {
                             (:textarea :name "content" :rows 3 :cols 60 (cl-who:str content))
                             (:br)
                             (:input :type "submit" :value "Save Changes"))))))))
-             (cl-who:htm (:p "No comments found."))))))))
+             (cl-who:htm (:p "No comments found.")))))))))
+
+(defun render-search-results (query results &optional (prefs *preferences*))
+  "Renders the search results page HTML, showing matching posts for the given QUERY, using layout PREFS."
+  (let ((theme (preferences-theme prefs)))
+    (layout (format nil "Search: ~a - SchemeBBS" query) "search-results" theme
+      (cl-who:with-html-output-to-string (s nil :indent t)
+        (:h1 "Search Results")
+        (:p :style "margin: 0.5em 2%;"
+            (:button :onclick "history.back();" :style "padding: 3px 10px; font-size: 0.85em; cursor: pointer; background-color: #ededed; border: 1px solid #bababa; border-radius: 4px; font-weight: bold;" "← Go Back")
+            " - Query: "
+            (:strong (cl-who:esc query)))
+        (:hr)
+        (if (null results)
+            (cl-who:htm (:p :style "margin: 2em; text-align: center;" "No results found matching your query."))
+            (cl-who:htm
+             (:dl :style "margin: 1em 2%;"
+                  (dolist (match results)
+                    (let* ((board (getf match :board))
+                           (thread-id (getf match :thread-id))
+                           (headline (getf match :headline))
+                           (post-id (getf match :post-id))
+                           (date (getf match :date))
+                           (content (getf match :content))
+                           (post-style (if (string= theme "colored")
+                                           (let ((hue (get-hash-hue post-id)))
+                                             (format nil (concatenate 'string
+                                                                      "background-color: hsl(~D, 85%, 96%); "
+                                                                      "border-left: 4px solid hsl(~D, 85%, 45%); "
+                                                                      "padding: 0.5em 1em; "
+                                                                      "margin: 0.3em 0 1.2em 0; "
+                                                                      "border-radius: 0 4px 4px 0;")
+                                                     hue hue))
+                                           "")))
+                      (cl-who:htm
+                       (:dt :style "margin-top: 1.5em; font-size: 0.95em;"
+                            "[" (:a :href (format nil "/~a/" board) (cl-who:esc board)) "] "
+                            (:a :href (format nil "/~a/~a" board thread-id) (:strong (cl-who:esc headline)))
+                            " - Post "
+                            (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
+                                (cl-who:str (format nil "#~a" post-id)))
+                            " "
+                            (:samp (cl-who:esc date)))
+                       (:dd :style post-style
+                            (cl-who:str (format-text content thread-id)))))))))
+        (:hr)
+        (cl-who:str (render-footer-html))))))
