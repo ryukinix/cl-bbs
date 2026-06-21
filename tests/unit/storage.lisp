@@ -26,4 +26,7 @@
            (true (cl-bbs/storage:is-board-locked 'bar))
            (false (cl-bbs/storage:is-board-locked "baz"))
            (false (cl-bbs/storage:is-board-locked 'baz)))
-      (setf (uiop:getenv "SBBS_LOCKED_BOARDS") old-env))))
+      (if old-env
+          (setf (uiop:getenv "SBBS_LOCKED_BOARDS") old-env)
+          #+sbcl (sb-posix:unsetenv "SBBS_LOCKED_BOARDS")
+          #-sbcl (setf (uiop:getenv "SBBS_LOCKED_BOARDS") "")))))

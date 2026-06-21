@@ -236,7 +236,7 @@
     (unwind-protect
          (progn
            (setf (uiop:getenv "SBBS_LOCKED_BOARDS") "lockedboard")
-           
+
            ;; 1. Try to POST a new thread (should return 403 Forbidden with error page)
            (let* ((body-str "titulus=Test&epistula=Hello")
                   (body-bytes (flexi-streams:string-to-octets body-str :external-format :utf-8))
@@ -262,7 +262,10 @@
              (is = 403 (first res))
              (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
              (is equal t (not (null (search "This board is read-only" (first (third res))))))))
-      (setf (uiop:getenv "SBBS_LOCKED_BOARDS") old-env)
+      (if old-env
+          (setf (uiop:getenv "SBBS_LOCKED_BOARDS") old-env)
+          #+sbcl (sb-posix:unsetenv "SBBS_LOCKED_BOARDS")
+          #-sbcl (setf (uiop:getenv "SBBS_LOCKED_BOARDS") ""))
       (let ((board-dir (merge-pathnames "sexp/lockedboard/" cl-bbs/storage:*base-dir*)))
         (when (probe-file board-dir)
           (uiop:delete-directory-tree board-dir :validate t))))))
