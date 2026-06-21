@@ -6,6 +6,8 @@
                 #:str
                 #:esc
                 #:fmt)
+  (:import-from :cl-bbs/storage
+                #:is-board-locked)
   (:export #:render-index
            #:render-list
            #:render-thread
@@ -162,7 +164,8 @@ function validatePostForm(form, errorId) {
       (:form :action "/search" :method "GET" :style "margin: 1em 2%; display: inline-flex;"
              (when (and (string= (preferences-search-local-only *preferences*) "yes") board)
                (cl-who:htm (:input :type "hidden" :name "board" :value board)))
-             (:input :type "text" :name "q" :placeholder "Search posts..." :style "padding: 2px 5px; font-size: 0.85em; margin-right: 5px;")
+             (:input :type "text" :name "q" :placeholder "Search posts..."
+                     :style "padding: 2px 5px; font-size: 0.85em; margin-right: 5px;")
              (:input :type "submit" :value "Search" :style "padding: 2px 8px; font-size: 0.85em;")))))
 
 (defun render-boards-header ()
@@ -190,7 +193,8 @@ function validatePostForm(form, errorId) {
                (:form :action "/search" :method "GET" :style "margin: 0; display: inline-flex;"
                       (when (and (string= (preferences-search-local-only *preferences*) "yes") board)
                         (cl-who:htm (:input :type "hidden" :name "board" :value board)))
-                      (:input :type "text" :name "q" :placeholder "Search posts..." :style "padding: 2px 5px; font-size: 0.85em; margin-right: 5px;")
+                      (:input :type "text" :name "q" :placeholder "Search posts..."
+                     :style "padding: 2px 5px; font-size: 0.85em; margin-right: 5px;")
                       (:input :type "submit" :value "Search" :style "padding: 2px 8px; font-size: 0.85em;"))))))))
 
 (defun render-menu (board selected)
@@ -398,7 +402,8 @@ function validatePostForm(form, errorId) {
                   (content (cdr (assoc 'cl-bbs/models:content post-data)))
                   (date (cdr (assoc 'cl-bbs/models:date post-data))))
              (when (and prev-id (> post-id (1+ prev-id)))
-               ;; Instead of hard assumption based just on IDs, actually check via truncated list if the missing IDs are meant to be rendered as collapsed (i.e. they actually exist in the background).
+               ;; Instead of hard assumption based just on IDs, actually check via truncated list if
+               ;; the missing IDs are meant to be rendered as collapsed (i.e. they actually exist in the background).
                ;; Find the maximum contiguous subsegment of truncated IDs bridging prev-id and post-id.
                (let* ((missing-ids (loop for id from (1+ prev-id) to (1- post-id) collect id))
                       (actual-missing (if (listp truncated)
@@ -435,11 +440,13 @@ function validatePostForm(form, errorId) {
                      " "
                      (:samp (cl-who:esc date)))
                 (:dd :style post-style (cl-who:str (format-text content thread-id))))))))
-       (:dt :style "margin: 0.5em 2%; margin-left: 0; padding-left: 0;"
-            (:a :href (format nil "#t~ap~a" thread-id next-post-number)
-                :id (format nil "t~ap~a" thread-id next-post-number)
-                (cl-who:str (format nil "~a" next-post-number))))
-       (:dd (cl-who:str (render-post-form board thread-id))))
+       (unless (is-board-locked board)
+         (cl-who:htm
+          (:dt :style "margin: 0.5em 2%; margin-left: 0; padding-left: 0;"
+               (:a :href (format nil "#t~ap~a" thread-id next-post-number)
+                   :id (format nil "t~ap~a" thread-id next-post-number)
+                   (cl-who:str (format nil "~a" next-post-number))))
+          (:dd (cl-who:str (render-post-form board thread-id))))))
       (:hr))))
 
 (defun render-index (board threads &optional (prefs *preferences*))
@@ -453,7 +460,8 @@ and the new thread form, using layout PREFS."
       (loop for t-data in threads
             for i from 1
             do (cl-who:htm (cl-who:str (render-frontpage-thread board t-data i prefs))))
-      (cl-who:str (render-thread-form board))
+      (unless (is-board-locked board)
+        (cl-who:htm (cl-who:str (render-thread-form board))))
       (:hr)
       (cl-who:str (render-footer-html)))))
 
@@ -551,15 +559,18 @@ optionally filtered by RANGE-STRING, using layout PREFS."
                           " "
                           (:samp (cl-who:esc date)))
                      (:dd :style post-style (cl-who:str (format-text content thread-id))))))
-         (:dt (:a :href (format nil "#t~ap~a" thread-id next-post-number)
-                  :id (format nil "t~ap~a" thread-id next-post-number)
-                  (cl-who:str (format nil "~a" next-post-number))))
-         (:dd (cl-who:str (render-post-form board thread-id))))
+         (unless (is-board-locked board)
+           (cl-who:htm
+            (:dt (:a :href (format nil "#t~ap~a" thread-id next-post-number)
+                     :id (format nil "t~ap~a" thread-id next-post-number)
+                     (cl-who:str (format nil "~a" next-post-number))))
+            (:dd (cl-who:str (render-post-form board thread-id))))))
         (:hr)
         (cl-who:str (render-footer-html))))))
 
 (defun render-preferences (board &optional (prefs *preferences*))
-  "Renders the board preferences HTML page, allowing users to choose a custom stylesheet THEME, default-board and search configuration."
+  "Renders the board preferences HTML page, allowing users to choose a custom
+stylesheet THEME, default-board and search configuration."
   (let* ((sexp-dir (merge-pathnames "sexp/" cl-bbs/storage:*base-dir*))
          (paths (and (probe-file sexp-dir) (uiop:subdirectories sexp-dir)))
          (boards (sort (mapcar (lambda (path)
@@ -580,7 +591,8 @@ optionally filtered by RANGE-STRING, using layout PREFS."
         (:form :action (format nil "/~a/preferences" board) :method "POST" :class "preferences-form"
                (:div :style "margin-bottom: 2em;"
                      (:h3 :style "margin-bottom: 0.5em;" "Style Theme")
-                     (:p :style "color: #555; font-size: 0.9em; margin-bottom: 0.8em;" "Customize the look and feel of the textboard.")
+                     (:p :style "color: #555; font-size: 0.9em; margin-bottom: 0.8em;"
+                         "Customize the look and feel of the textboard.")
                      (:div :class "theme-selector-container"
                            (dolist (item '("default" "dark" "no" "colored" "matrix"))
                              (cl-who:htm
@@ -594,7 +606,8 @@ optionally filtered by RANGE-STRING, using layout PREFS."
 
                (:div :style "margin-bottom: 2em;"
                      (:h3 :style "margin-bottom: 0.5em;" "Default Board")
-                     (:p :style "color: #555; font-size: 0.9em; margin-bottom: 0.8em;" "Select the board you land on when visiting the root domain.")
+                     (:p :style "color: #555; font-size: 0.9em; margin-bottom: 0.8em;"
+                         "Select the board you land on when visiting the root domain.")
                      (:div :class "board-selector-container"
                            (:select :name "default_board" :style "padding: 4px; font-size: 0.95em;"
                                     (:option :value ""
@@ -602,34 +615,52 @@ optionally filtered by RANGE-STRING, using layout PREFS."
                                              "None (Main Page)")
                                     (dolist (item boards)
                                       (cl-who:htm
-                                       (:option :value item :selected (and default-board (string= default-board item))
+                                       (:option :value item
+                                                :selected (and default-board (string= default-board item))
                                                 (cl-who:str (format nil "/~a/" item))))))))
 
                (:div :style "margin-bottom: 2em;"
                      (:h3 :style "margin-bottom: 0.5em;" "Search Settings")
-                     (:p :style "color: #555; font-size: 0.9em; margin-bottom: 0.8em;" "Configure how the search bar behaves on board indices and thread views.")
+                     (:p :style "color: #555; font-size: 0.9em; margin-bottom: 0.8em;"
+                         "Configure how the search bar behaves on board indices and thread views.")
                      (:div :class "search-preferences-container" :style "line-height: 1.8em;"
                            (:div :style "margin-bottom: 0.8em;"
-                                 (:label :style "font-weight: bold;" "Hide search input in board view: ")
+                                 (:label :style "font-weight: bold;"
+                                         "Hide search input in board view: ")
                                  (:br)
                                  (:select :name "search_hide_input" :style "padding: 4px; font-size: 0.95em;"
                                           (:option :value "no" :selected (string= search-hide-input "no") "No")
                                           (:option :value "yes" :selected (string= search-hide-input "yes") "Yes")))
                            (:div :style "margin-bottom: 0.8em;"
-                                 (:label :style "font-weight: bold;" "Only make local searches in the current board: ")
+                                 (:label :style "font-weight: bold;"
+                                         "Only make local searches in the current board: ")
                                  (:br)
-                                 (:select :name "search_local_only" :style "padding: 4px; font-size: 0.95em;"
-                                          (:option :value "no" :selected (string= search-local-only "no") "No (Global)")
-                                          (:option :value "yes" :selected (string= search-local-only "yes") "Yes (Local)")))
+                                 (:select :name "search_local_only"
+                                          :style "padding: 4px; font-size: 0.95em;"
+                                          (:option :value "no"
+                                                   :selected (string= search-local-only "no")
+                                                   "No (Global)")
+                                          (:option :value "yes"
+                                                   :selected (string= search-local-only "yes")
+                                                   "Yes (Local)")))
                            (:div :style "margin-bottom: 0.8em;"
-                                 (:label :style "font-weight: bold;" "Placement of search input: ")
+                                 (:label :style "font-weight: bold;"
+                                         "Placement of search input: ")
                                  (:br)
-                                 (:select :name "search_position" :style "padding: 4px; font-size: 0.95em;"
-                                          (:option :value "top" :selected (string= search-position "top") "Top (Header)")
-                                          (:option :value "bottom" :selected (string= search-position "bottom") "Bottom (Footer)")))))
+                                 (:select :name "search_position"
+                                          :style "padding: 4px; font-size: 0.95em;"
+                                          (:option :value "top"
+                                                   :selected (string= search-position "top")
+                                                   "Top (Header)")
+                                          (:option :value "bottom"
+                                                   :selected (string= search-position "bottom")
+                                                   "Bottom (Footer)")))))
 
                (:p :style "margin-top: 2em;"
-                   (:input :type "submit" :value "Save Preferences" :style "padding: 6px 16px; font-size: 1em; cursor: pointer; font-weight: bold; background-color: #ededed; border: 1px solid #bababa; border-radius: 4px;")))
+                   (:input :type "submit" :value "Save Preferences"
+                           :style "padding: 6px 16px; font-size: 1em; cursor: pointer;
+                                   font-weight: bold; background-color: #ededed;
+                                   border: 1px solid #bababa; border-radius: 4px;")))
         (:script "
 function updateThemePreview(themeValue) {
   // Find all stylesheet links
@@ -663,8 +694,51 @@ function updateThemePreview(themeValue) {
                         (:input :type "hidden" :name "board" :value b)
                         (:input :type "submit" :value "Delete Board" :class "delete-button"
                                 :onclick (concatenate 'string
-                                                      "return confirm('Are you sure you want to delete the ENTIRE board? "
+                                                      "return confirm('Are you sure you want to "
+                                                      "delete the ENTIRE board? "
                                                       "This cannot be undone.');")))))))
+        (:h2 "Create Board")
+        (:p "Enter a board name below to create a new board. Board names must be in "
+            (:strong "kebab-case")
+            " (only lowercase letters, numbers, and hyphens; no spaces or underlines).")
+        (:div :style "margin: 1em 0;"
+              (:form :action "/admin/action" :method "POST" :onsubmit "return validateCreateBoard()"
+                     (:input :type "hidden" :name "action" :value "create-board")
+                     (:input :type "text" :name "board" :id "new-board-name" :placeholder "board-name"
+                             :style "padding: 6px; font-size: 1em; border: 1px solid #bababa;
+                                     border-radius: 4px; font-family: monospace;")
+                     " "
+                     (:input :type "submit" :value "Create Board"
+                             :style "padding: 6px 12px; font-size: 1em; background-color: #ededed;
+                                     border: 1px solid #b5b5b5; border-radius: 4px; cursor: pointer;
+                                     font-weight: bold;"))
+              (:p :id "board-error" :style "color: red; font-size: 0.9em; margin: 0.5em 0; display: none;"))
+        (:script :type "text/javascript"
+                 "function validateCreateBoard() {
+        const input = document.getElementById('new-board-name');
+        const error = document.getElementById('board-error');
+        const boardName = input.value.trim();
+
+        // Regex for kebab-case (lowercase alphanumeric and hyphens only, no start/end hyphens)
+        const kebabRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+        if (!boardName) {
+        error.textContent = 'Please enter a board name.';
+        error.style.display = 'block';
+        return false;
+        }
+
+        if (!kebabRegex.test(boardName)) {
+    error.textContent = 'Invalid board name! Must contain only lowercase ' +
+      'alphanumeric characters and hyphens (e.g. \"lisp-board\", no spaces, ' +
+      'underlines or capitals).';
+    error.style.display = 'block';
+    return false;
+  }
+
+  error.style.display = 'none';
+  return true;
+}")
         (when board
           (cl-who:htm
            (:hr)
@@ -739,7 +813,11 @@ function updateThemePreview(themeValue) {
       (cl-who:with-html-output-to-string (s nil :indent t)
         (:h1 "Search Results")
         (:p :style "margin: 0.5em 2%;"
-            (:button :onclick "history.back();" :style "padding: 3px 10px; font-size: 0.85em; cursor: pointer; background-color: #ededed; border: 1px solid #bababa; border-radius: 4px; font-weight: bold;" "← Go Back")
+            (:button :onclick "history.back();"
+                     :style "padding: 3px 10px; font-size: 0.85em; cursor: pointer;
+                             background-color: #ededed; border: 1px solid #bababa;
+                             border-radius: 4px; font-weight: bold;"
+                     "← Go Back")
             " - Query: "
             (:strong (cl-who:esc query)))
         (:hr)

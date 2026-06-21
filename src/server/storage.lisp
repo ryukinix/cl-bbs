@@ -3,7 +3,8 @@
   (:export #:*base-dir*
            #:ensure-board-dirs
            #:read-sexp-file
-           #:write-sexp-file))
+           #:write-sexp-file
+           #:is-board-locked))
 
 (in-package :cl-bbs/storage)
 
@@ -31,3 +32,12 @@
   (with-open-file (stream path :direction :output :if-exists :supersede :if-does-not-exist :create)
     (write data :stream stream :pretty t)
     (terpri stream)))
+
+(defun is-board-locked (board-name)
+  "Checks if a board is locked by examining the SBBS_LOCKED_BOARDS environment variable.
+BOARD-NAME can be a string or a symbol."
+  (let ((locked-env (uiop:getenv "SBBS_LOCKED_BOARDS"))
+        (board-str (if (symbolp board-name) (string-downcase (symbol-name board-name)) board-name)))
+    (when (and locked-env board-str)
+      (let ((locked-boards (cl-ppcre:split "," locked-env)))
+        (member board-str locked-boards :test #'string=)))))

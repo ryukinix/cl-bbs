@@ -4,7 +4,8 @@
                 #:*base-dir*
                 #:read-sexp-file
                 #:write-sexp-file
-                #:ensure-board-dirs)
+                #:ensure-board-dirs
+                #:is-board-locked)
   (:import-from :cl-bbs/views
                 #:render-moderation
                 #:render-index
@@ -494,7 +495,8 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                         (when posts-assoc
                           (setf comments (get-flat-posts posts-assoc)))))))
                 `(200 (:content-type "text/html; charset=utf-8")
-                      (,(render-moderation boards board threads thread-id-str comments cl-bbs/views:*preferences* headline))))))))
+                      (,(render-moderation boards board threads thread-id-str comments
+                                           cl-bbs/views:*preferences* headline))))))))
 
 ;; 4. POST /admin/action (Admin Actions)
 (setf (ningle:route *app* "/admin/action" :method :POST)
@@ -514,6 +516,13 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                   ((string= action "delete-board")
                    (delete-board-dir board)
                    `(303 (:location "/admin") ("Redirecting...")))
+                  ((string= action "create-board")
+                   (let ((sanitized (sanitize-board-name board)))
+                     (if sanitized
+                         (progn
+                           (ensure-board-dirs sanitized)
+                           `(303 (:location "/admin") ("Redirecting...")))
+                         `(400 (:content-type "text/plain") ("Invalid Board Name")))))
                   ((string= action "delete-thread")
                    (delete-thread-file board thread-id-str)
                    `(303 (:location ,(format nil "/admin?board=~a" board)) ("Redirecting...")))
@@ -607,7 +616,8 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
 ;; 10. POST /:board/post (New Thread)
 (setf (ningle:route *app* "/:board/post" :method :POST)
       (lambda (params)
-        (let* ((board (cdr (assoc :board params)))
+        (block out
+          (let* ((board (cdr (assoc :board params)))
                (env (lack.request:request-env ningle:*request*))
                (parsed-params (get-body-params params env))
                (epistula (cdr (assoc "epistula" parsed-params :test #'string=)))
@@ -623,11 +633,21 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
               `(400 (:content-type "text/html; charset=utf-8")
                     (,(render-error-page "Post body cannot be empty" cl-bbs/views:*preferences*)))
               (progn
+                (when (is-board-locked board)
+                  (return-from out
+                    `(403 (:content-type "text/html; charset=utf-8")
+                          (,(render-error-page "This board is read-only"
+                                               cl-bbs/views:*preferences*)))))
+                (unless (probe-file (merge-pathnames (format nil "sexp/~a/" board) *base-dir*))
+                   (return-from out
+                     `(403 (:content-type "text/html; charset=utf-8")
+                           (,(render-error-page "Only administrators can create new boards"
+                                                cl-bbs/views:*preferences*)))))
                 (ensure-board-dirs board)
                 (create-thread thread-path titulus date epistula)
                 (add-thread-to-list list-path thread-number titulus date)
                 (add-thread-to-index index-path thread-number titulus date epistula)
-                `(303 (:location ,(format nil "/~a/" board)) ("Redirecting...")))))))
+                `(303 (:location ,(format nil "/~a/" board)) ("Redirecting..."))))))))
 
 ;; 11. GET /:board
 (setf (ningle:route *app* "/:board" :method :GET)
@@ -656,93 +676,99 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
 ;; 13. POST /:board/:thread_id/post (Reply to Thread)
 (setf (ningle:route *app* "/:board/:thread_id/post" :method :POST)
       (lambda (params)
-        (let* ((board (cdr (assoc :board params)))
-               (thread-id (cdr (assoc :thread_id params)))
-               (env (lack.request:request-env ningle:*request*))
-               (parsed-params (get-body-params params env))
-               (epistula (cdr (assoc "epistula" parsed-params :test #'string=)))
-               (date (get-date))
-               (thread-path (merge-pathnames (format nil "sexp/~a/~a" board thread-id) *base-dir*)))
-          (if (or (null epistula)
-                  (string= "" (string-trim '(#\Space #\Tab #\Newline #\Return) epistula)))
-              `(400 (:content-type "text/html; charset=utf-8")
-                    (,(render-error-page "Post body cannot be empty" cl-bbs/views:*preferences*)))
-              (if (probe-file thread-path)
-                  (let* ((thread-data (read-sexp-file thread-path))
-                         (raw-thread (if (and (consp thread-data)
-                                              (consp (car thread-data))
-                                              (consp (caar thread-data)))
-                                         (car thread-data)
-                                         thread-data))
-                         (posts-assoc (let ((assoc-res (assoc 'cl-bbs/models:posts raw-thread)))
-                                        (if assoc-res
-                                            assoc-res
-                                            (cadr (if (consp thread-data)
-                                                      thread-data
-                                                      (list thread-data))))))
-                         (posts-list (if (listp (cdr posts-assoc))
-                                         (if (listp (cadr posts-assoc))
-                                             (cadr posts-assoc)
-                                             (cdr posts-assoc))
-                                         (cdr posts-assoc)))
-                         (posts (if (listp (car posts-list)) posts-list (list posts-list)))
-                         (new-post `(,(1+ (reduce #'max posts :key #'car :initial-value 0))
-                                     (cl-bbs/models:date . ,date)
-                                     (cl-bbs/models:vip . nil)
-                                     (cl-bbs/models:content . ,epistula)))
-                         (new-thread-data (update-thread-data thread-data new-post)))
-                    (write-sexp-file thread-path new-thread-data)
-                    (let* ((list-path (merge-pathnames (format nil "sexp/~a/list" board) *base-dir*))
-                           (threads-list (read-sexp-file list-path))
-                           (str-id (if (stringp thread-id) (parse-integer thread-id) thread-id))
-                           (target-thread-assoc (assoc str-id threads-list)))
-                      (when target-thread-assoc
-                        (let* ((rem-threads (remove str-id threads-list :key #'car :test #'equal))
-                               (raw-new-thread (if (and (consp new-thread-data)
-                                                        (consp (car new-thread-data))
-                                                        (consp (caar new-thread-data)))
-                                                   (car new-thread-data)
-                                                   new-thread-data))
-                               (messages-count (length (cadr (assoc 'cl-bbs/models:posts raw-new-thread))))
-                               (headline-val (if (stringp (cdr (assoc 'cl-bbs/models:headline
-                                                                      (cdr target-thread-assoc))))
-                                                 (cdr (assoc 'cl-bbs/models:headline
-                                                             (cdr target-thread-assoc)))
-                                                 (cdr (assoc 'headline (cdr target-thread-assoc)))))
-                               (updated-entry `(,str-id
-                                                 (cl-bbs/models:headline . ,headline-val)
-                                                 (cl-bbs/models:date . ,date)
-                                                 (cl-bbs/models:messages . ,messages-count))))
-                          (write-sexp-file list-path (cons updated-entry rem-threads))))
-                      (let* ((index-path (merge-pathnames (format nil "sexp/~a/index" board) *base-dir*))
-                             (index-list (read-sexp-file index-path))
-                             (target-index-assoc (assoc str-id index-list)))
-                        (when target-index-assoc
-                          (let* ((rem-index (remove str-id index-list :key #'car :test #'equal))
-                                 (raw-new-thread (if (and (consp new-thread-data)
-                                                          (consp (car new-thread-data))
-                                                          (consp (caar new-thread-data)))
-                                                     (car new-thread-data)
-                                                     new-thread-data))
-                                 (headline-val (if (stringp (cdr (assoc 'cl-bbs/models:headline
-                                                                        (cdr target-index-assoc))))
-                                                   (cdr (assoc 'cl-bbs/models:headline
-                                                               (cdr target-index-assoc)))
-                                                   (cdr (assoc 'headline (cdr target-index-assoc)))))
-                                 (actual-posts (get-flat-posts (assoc 'cl-bbs/models:posts raw-new-thread)))
-                                 (truncated-ids (if (> (length actual-posts) 6)
-                                                    (mapcar #'car (butlast (cdr actual-posts) 5))
-                                                    nil))
-                                 (updated-entry `(,str-id
-                                                   (cl-bbs/models:headline . ,headline-val)
-                                                   (cl-bbs/models:truncated . ,truncated-ids)
-                                                   (cl-bbs/models:posts
-                                                    ,(if (> (length actual-posts) 6)
-                                                        (cons (car actual-posts) (last actual-posts 5))
-                                                        actual-posts)))))
-                           (write-sexp-file index-path (cons updated-entry rem-index))))))
-                    `(303 (:location ,(format nil "/~a/" board)) ("Redirecting...")))
-                  `(404 (:content-type "text/plain") ("Thread not found")))))))
+        (block out
+          (let* ((board (cdr (assoc :board params)))
+                 (thread-id (cdr (assoc :thread_id params)))
+                 (env (lack.request:request-env ningle:*request*))
+                 (parsed-params (get-body-params params env))
+                 (epistula (cdr (assoc "epistula" parsed-params :test #'string=)))
+                 (date (get-date))
+                 (thread-path (merge-pathnames (format nil "sexp/~a/~a" board thread-id) *base-dir*)))
+            (if (or (null epistula)
+                    (string= "" (string-trim '(#\Space #\Tab #\Newline #\Return) epistula)))
+                `(400 (:content-type "text/html; charset=utf-8")
+                      (,(render-error-page "Post body cannot be empty" cl-bbs/views:*preferences*)))
+                (progn
+                  (when (is-board-locked board)
+                    (return-from out
+                      `(403 (:content-type "text/html; charset=utf-8")
+                            (,(render-error-page "This board is read-only" cl-bbs/views:*preferences*)))))
+                  (if (probe-file thread-path)
+                      (let* ((thread-data (read-sexp-file thread-path))
+                             (raw-thread (if (and (consp thread-data)
+                                                  (consp (car thread-data))
+                                                  (consp (caar thread-data)))
+                                             (car thread-data)
+                                             thread-data))
+                             (posts-assoc (let ((assoc-res (assoc 'cl-bbs/models:posts raw-thread)))
+                                            (if assoc-res
+                                                assoc-res
+                                                (cadr (if (consp thread-data)
+                                                          thread-data
+                                                          (list thread-data))))))
+                             (posts-list (if (listp (cdr posts-assoc))
+                                             (if (listp (cadr posts-assoc))
+                                                 (cadr posts-assoc)
+                                                 (cdr posts-assoc))
+                                             (cdr posts-assoc)))
+                             (posts (if (listp (car posts-list)) posts-list (list posts-list)))
+                             (new-post `(,(1+ (reduce #'max posts :key #'car :initial-value 0))
+                                         (cl-bbs/models:date . ,date)
+                                         (cl-bbs/models:vip . nil)
+                                         (cl-bbs/models:content . ,epistula)))
+                             (new-thread-data (update-thread-data thread-data new-post)))
+                        (write-sexp-file thread-path new-thread-data)
+                        (let* ((list-path (merge-pathnames (format nil "sexp/~a/list" board) *base-dir*))
+                               (threads-list (read-sexp-file list-path))
+                               (str-id (if (stringp thread-id) (parse-integer thread-id) thread-id))
+                               (target-thread-assoc (assoc str-id threads-list)))
+                          (when target-thread-assoc
+                            (let* ((rem-threads (remove str-id threads-list :key #'car :test #'equal))
+                                   (raw-new-thread (if (and (consp new-thread-data)
+                                                            (consp (car new-thread-data))
+                                                            (consp (caar new-thread-data)))
+                                                       (car new-thread-data)
+                                                       new-thread-data))
+                                   (messages-count (length (cadr (assoc 'cl-bbs/models:posts raw-new-thread))))
+                                   (headline-val (if (stringp (cdr (assoc 'cl-bbs/models:headline
+                                                                          (cdr target-thread-assoc))))
+                                                     (cdr (assoc 'cl-bbs/models:headline
+                                                                 (cdr target-thread-assoc)))
+                                                     (cdr (assoc 'headline (cdr target-thread-assoc)))))
+                                   (updated-entry `(,str-id
+                                                     (cl-bbs/models:headline . ,headline-val)
+                                                     (cl-bbs/models:date . ,date)
+                                                     (cl-bbs/models:messages . ,messages-count))))
+                              (write-sexp-file list-path (cons updated-entry rem-threads))))
+                          (let* ((index-path (merge-pathnames (format nil "sexp/~a/index" board) *base-dir*))
+                                 (index-list (read-sexp-file index-path))
+                                 (target-index-assoc (assoc str-id index-list)))
+                            (when target-index-assoc
+                              (let* ((rem-index (remove str-id index-list :key #'car :test #'equal))
+                                     (raw-new-thread (if (and (consp new-thread-data)
+                                                              (consp (car new-thread-data))
+                                                              (consp (caar new-thread-data)))
+                                                         (car new-thread-data)
+                                                         new-thread-data))
+                                     (headline-val (if (stringp (cdr (assoc 'cl-bbs/models:headline
+                                                                            (cdr target-index-assoc))))
+                                                       (cdr (assoc 'cl-bbs/models:headline
+                                                                   (cdr target-index-assoc)))
+                                                       (cdr (assoc 'headline (cdr target-index-assoc)))))
+                                     (actual-posts (get-flat-posts (assoc 'cl-bbs/models:posts raw-new-thread)))
+                                     (truncated-ids (if (> (length actual-posts) 6)
+                                                        (mapcar #'car (butlast (cdr actual-posts) 5))
+                                                        nil))
+                                     (updated-entry `(,str-id
+                                                       (cl-bbs/models:headline . ,headline-val)
+                                                       (cl-bbs/models:truncated . ,truncated-ids)
+                                                       (cl-bbs/models:posts
+                                                        ,(if (> (length actual-posts) 6)
+                                                            (cons (car actual-posts) (last actual-posts 5))
+                                                            actual-posts)))))
+                               (write-sexp-file index-path (cons updated-entry rem-index))))))
+                        `(303 (:location ,(format nil "/~a/" board)) ("Redirecting...")))
+                      `(404 (:content-type "text/plain") ("Thread not found")))))))))
 
 ;; 14. GET /:board/:thread_id/:range (Thread Comments with Range)
 (setf (ningle:route *app* "/:board/:thread_id/:range" :method :GET)
