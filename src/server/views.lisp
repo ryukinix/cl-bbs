@@ -665,6 +665,41 @@ function updateThemePreview(themeValue) {
                                 :onclick (concatenate 'string
                                                       "return confirm('Are you sure you want to delete the ENTIRE board? "
                                                       "This cannot be undone.');")))))))
+        (:h2 "Create Board")
+        (:p "Enter a board name below to create a new board. Board names must be in " (:strong "kebab-case") " (only lowercase letters, numbers, and hyphens; no spaces or underlines).")
+        (:div :style "margin: 1em 0;"
+              (:form :action "/admin/action" :method "POST" :onsubmit "return validateCreateBoard()"
+                     (:input :type "hidden" :name "action" :value "create-board")
+                     (:input :type "text" :name "board" :id "new-board-name" :placeholder "board-name"
+                             :style "padding: 6px; font-size: 1em; border: 1px solid #bababa; border-radius: 4px; font-family: monospace;")
+                     " "
+                     (:input :type "submit" :value "Create Board"
+                             :style "padding: 6px 12px; font-size: 1em; background-color: #ededed; border: 1px solid #b5b5b5; border-radius: 4px; cursor: pointer; font-weight: bold;"))
+              (:p :id "board-error" :style "color: red; font-size: 0.9em; margin: 0.5em 0; display: none;"))
+        (:script :type "text/javascript"
+                 "function validateCreateBoard() {
+  const input = document.getElementById('new-board-name');
+  const error = document.getElementById('board-error');
+  const boardName = input.value.trim();
+  
+  // Regex for kebab-case (lowercase alphanumeric and hyphens only, no start/end hyphens)
+  const kebabRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  
+  if (!boardName) {
+    error.textContent = 'Please enter a board name.';
+    error.style.display = 'block';
+    return false;
+  }
+  
+  if (!kebabRegex.test(boardName)) {
+    error.textContent = 'Invalid board name! Must contain only lowercase alphanumeric characters and hyphens (e.g. \"lisp-board\", no spaces, underlines or capitals).';
+    error.style.display = 'block';
+    return false;
+  }
+  
+  error.style.display = 'none';
+  return true;
+}")
         (when board
           (cl-who:htm
            (:hr)

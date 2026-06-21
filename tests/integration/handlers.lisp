@@ -188,3 +188,42 @@
       (let ((board-dir (merge-pathnames "sexp/searchtest/" cl-bbs/storage:*base-dir*)))
         (when (probe-file board-dir)
           (uiop:delete-directory-tree board-dir :validate t))))))
+
+(define-test test-admin-create-board
+  :parent integration
+  (let ((board-dir (merge-pathnames "sexp/testboard/" cl-bbs/storage:*base-dir*)))
+    (when (probe-file board-dir)
+      (uiop:delete-directory-tree board-dir :validate t))
+    (unwind-protect
+         (progn
+           ;; 1. Valid board name creation
+           (let* ((auth-val (concatenate 'string "Basic " (cl-base64:string-to-base64-string "admin:superchanner")))
+                  (body-str "action=create-board&board=testboard")
+                  (body-bytes (flexi-streams:string-to-octets body-str :external-format :utf-8))
+                  (stream (flexi-streams:make-in-memory-input-stream body-bytes))
+                  (env (list :path-info "/admin/action"
+                             :request-method :post
+                             :headers (alexandria:plist-hash-table (list "authorization" auth-val) :test 'equal)
+                             :content-length (length body-bytes)
+                             :raw-body stream))
+                  (res (cl-bbs/handlers:handle-request env)))
+             ;; Expect redirect to /admin
+             (is = 303 (first res))
+             (is equal "/admin" (getf (second res) :location))
+             ;; Check directory exists
+             (true (probe-file board-dir)))
+
+           ;; 2. Invalid board name creation (should return 400)
+           (let* ((auth-val (concatenate 'string "Basic " (cl-base64:string-to-base64-string "admin:superchanner")))
+                  (body-str "action=create-board&board=invalid_name_with_invalid_char*")
+                  (body-bytes (flexi-streams:string-to-octets body-str :external-format :utf-8))
+                  (stream (flexi-streams:make-in-memory-input-stream body-bytes))
+                  (env (list :path-info "/admin/action"
+                             :request-method :post
+                             :headers (alexandria:plist-hash-table (list "authorization" auth-val) :test 'equal)
+                             :content-length (length body-bytes)
+                             :raw-body stream))
+                  (res (cl-bbs/handlers:handle-request env)))
+             (is = 400 (first res))))
+      (when (probe-file board-dir)
+        (uiop:delete-directory-tree board-dir :validate t)))))

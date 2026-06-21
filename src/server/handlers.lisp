@@ -514,6 +514,13 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                   ((string= action "delete-board")
                    (delete-board-dir board)
                    `(303 (:location "/admin") ("Redirecting...")))
+                  ((string= action "create-board")
+                   (let ((sanitized (sanitize-board-name board)))
+                     (if sanitized
+                         (progn
+                           (ensure-board-dirs sanitized)
+                           `(303 (:location "/admin") ("Redirecting...")))
+                         `(400 (:content-type "text/plain") ("Invalid Board Name")))))
                   ((string= action "delete-thread")
                    (delete-thread-file board thread-id-str)
                    `(303 (:location ,(format nil "/admin?board=~a" board)) ("Redirecting...")))
