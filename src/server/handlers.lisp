@@ -323,11 +323,14 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
       1
       (1+ (apply #'max (mapcar #'car threads)))))
 
-(defun create-thread (path headline date message)
-  (let ((thread `((cl-bbs/models:headline . ,headline)
-                  (cl-bbs/models:posts . ((1 (cl-bbs/models:date . ,date)
-                                             (cl-bbs/models:vip . nil)
-                                             (cl-bbs/models:content . ,message)))))))
+(defun create-thread (path headline date message &optional env)
+  (let* ((ip (let ((headers (getf env :headers)))
+               (and headers (gethash "cf-connecting-ip" headers))))
+         (thread `((cl-bbs/models:headline . ,headline)
+                   (cl-bbs/models:posts . ((1 (cl-bbs/models:date . ,date)
+                                              (cl-bbs/models:vip . nil)
+                                              ,@(when ip `((cl-bbs/models:ip . ,ip)))
+                                              (cl-bbs/models:content . ,message)))))))
     (write-sexp-file path thread)))
 
 (defun add-thread-to-list (path thread-number headline date)
@@ -644,7 +647,8 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                            (,(render-error-page "Only administrators can create new boards"
                                                 cl-bbs/views:*preferences*)))))
                 (ensure-board-dirs board)
-                (create-thread thread-path titulus date epistula)
+                (log-ip-action env (format nil "POST /~a/post" board))
+                (create-thread thread-path titulus date epistula env)
                 (add-thread-to-list list-path thread-number titulus date)
                 (add-thread-to-index index-path thread-number titulus date epistula)
                 `(303 (:location ,(format nil "/~a/" board)) ("Redirecting..."))))))))
@@ -712,11 +716,15 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                                                  (cdr posts-assoc))
                                              (cdr posts-assoc)))
                              (posts (if (listp (car posts-list)) posts-list (list posts-list)))
+                             (ip (let ((headers (getf env :headers)))
+                                   (and headers (gethash "cf-connecting-ip" headers))))
                              (new-post `(,(1+ (reduce #'max posts :key #'car :initial-value 0))
                                          (cl-bbs/models:date . ,date)
                                          (cl-bbs/models:vip . nil)
+                                         ,@(when ip `((cl-bbs/models:ip . ,ip)))
                                          (cl-bbs/models:content . ,epistula)))
                              (new-thread-data (update-thread-data thread-data new-post)))
+                        (log-ip-action env (format nil "POST /~a/~a/post" board thread-id))
                         (write-sexp-file thread-path new-thread-data)
                         (let* ((list-path (merge-pathnames (format nil "sexp/~a/list" board) *base-dir*))
                                (threads-list (read-sexp-file list-path))
@@ -782,3 +790,12 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                 `(200 (:content-type "text/html; charset=utf-8")
                       (,(render-thread board thread-id thread-data range-str cl-bbs/views:*preferences*))))
               `(404 (:content-type "text/plain") ("Thread not found"))))))
+(defun log-ip-action (env action-path)
+  (let* ((headers (getf env :headers))
+         (ip (and headers (gethash "cf-connecting-ip" headers))))
+    (when ip
+      (with-open-file (stream "cl-bbs.log" :direction :output
+                                           :if-exists :append
+                                           :if-does-not-exist :create)
+        (format stream "~A | ~A~%" ip action-path)
+        (format t "~A | ~A~%" ip action-path)))))

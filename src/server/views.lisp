@@ -777,9 +777,13 @@ function updateThemePreview(themeValue) {
                  (let* ((pid (car p))
                         (pdata (cdr p))
                         (content (cdr (assoc 'cl-bbs/models:content pdata)))
+                        (ip (cdr (assoc 'cl-bbs/models:ip pdata)))
                         (date (cdr (assoc 'cl-bbs/models:date pdata))))
                    (cl-who:htm
                     (:dt "No." (cl-who:str (format nil "~a" pid)) " " (:samp (cl-who:esc date))
+                         (when ip
+                           (cl-who:htm " " (:span :style "color: #888; font-family: monospace;"
+                                                 "[IP: " (cl-who:esc ip) "]")))
                          " &nbsp; "
                          (:form :action "/admin/action" :method "POST" :style "display:inline;"
                                 (:input :type "hidden" :name "action" :value "delete-comment")

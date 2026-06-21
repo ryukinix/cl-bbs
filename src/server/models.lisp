@@ -10,7 +10,8 @@
            #:date
            #:messages
            #:vip
-           #:name))
+           #:name
+           #:ip))
 
 (in-package :cl-bbs/models)
 
@@ -18,6 +19,7 @@
   ((id :initarg :id :accessor post-id)
    (date :initarg :date :accessor post-date)
    (vip :initarg :vip :accessor post-vip :initform nil)
+   (ip :initarg :ip :accessor post-ip :initform nil)
    (content :initarg :content :accessor post-content))
   (:documentation "Represents a single post on a message board."))
 
