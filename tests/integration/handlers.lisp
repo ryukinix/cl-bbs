@@ -227,3 +227,42 @@
              (is = 400 (first res))))
       (when (probe-file board-dir)
         (uiop:delete-directory-tree board-dir :validate t)))))
+
+(define-test test-locked-board-posting
+  :parent integration
+  ;; Ensure board dirs are created for testing board 'lockedboard'
+  (cl-bbs/storage:ensure-board-dirs "lockedboard")
+  (let ((old-env (uiop:getenv "SBBS_LOCKED_BOARDS")))
+    (unwind-protect
+         (progn
+           (setf (uiop:getenv "SBBS_LOCKED_BOARDS") "lockedboard")
+           
+           ;; 1. Try to POST a new thread (should return 403 Forbidden with error page)
+           (let* ((body-str "titulus=Test&epistula=Hello")
+                  (body-bytes (flexi-streams:string-to-octets body-str :external-format :utf-8))
+                  (stream (flexi-streams:make-in-memory-input-stream body-bytes))
+                  (env (list :path-info "/lockedboard/post"
+                             :request-method :post
+                             :content-length (length body-bytes)
+                             :raw-body stream))
+                  (res (cl-bbs/handlers:handle-request env)))
+             (is = 403 (first res))
+             (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
+             (is equal t (not (null (search "This board is read-only" (first (third res)))))))
+
+           ;; 2. Try to POST a reply (should return 403 Forbidden with error page)
+           (let* ((body-str "epistula=Reply")
+                  (body-bytes (flexi-streams:string-to-octets body-str :external-format :utf-8))
+                  (stream (flexi-streams:make-in-memory-input-stream body-bytes))
+                  (env (list :path-info "/lockedboard/1/post"
+                             :request-method :post
+                             :content-length (length body-bytes)
+                             :raw-body stream))
+                  (res (cl-bbs/handlers:handle-request env)))
+             (is = 403 (first res))
+             (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
+             (is equal t (not (null (search "This board is read-only" (first (third res))))))))
+      (setf (uiop:getenv "SBBS_LOCKED_BOARDS") old-env)
+      (let ((board-dir (merge-pathnames "sexp/lockedboard/" cl-bbs/storage:*base-dir*)))
+        (when (probe-file board-dir)
+          (uiop:delete-directory-tree board-dir :validate t))))))

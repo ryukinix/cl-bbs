@@ -6,6 +6,8 @@
                 #:str
                 #:esc
                 #:fmt)
+  (:import-from :cl-bbs/storage
+                #:is-board-locked)
   (:export #:render-index
            #:render-list
            #:render-thread
@@ -435,11 +437,13 @@ function validatePostForm(form, errorId) {
                      " "
                      (:samp (cl-who:esc date)))
                 (:dd :style post-style (cl-who:str (format-text content thread-id))))))))
-       (:dt :style "margin: 0.5em 2%; margin-left: 0; padding-left: 0;"
-            (:a :href (format nil "#t~ap~a" thread-id next-post-number)
-                :id (format nil "t~ap~a" thread-id next-post-number)
-                (cl-who:str (format nil "~a" next-post-number))))
-       (:dd (cl-who:str (render-post-form board thread-id))))
+       (unless (is-board-locked board)
+         (cl-who:htm
+          (:dt :style "margin: 0.5em 2%; margin-left: 0; padding-left: 0;"
+               (:a :href (format nil "#t~ap~a" thread-id next-post-number)
+                   :id (format nil "t~ap~a" thread-id next-post-number)
+                   (cl-who:str (format nil "~a" next-post-number))))
+          (:dd (cl-who:str (render-post-form board thread-id))))))
       (:hr))))
 
 (defun render-index (board threads &optional (prefs *preferences*))
@@ -453,7 +457,8 @@ and the new thread form, using layout PREFS."
       (loop for t-data in threads
             for i from 1
             do (cl-who:htm (cl-who:str (render-frontpage-thread board t-data i prefs))))
-      (cl-who:str (render-thread-form board))
+      (unless (is-board-locked board)
+        (cl-who:htm (cl-who:str (render-thread-form board))))
       (:hr)
       (cl-who:str (render-footer-html)))))
 
@@ -551,10 +556,12 @@ optionally filtered by RANGE-STRING, using layout PREFS."
                           " "
                           (:samp (cl-who:esc date)))
                      (:dd :style post-style (cl-who:str (format-text content thread-id))))))
-         (:dt (:a :href (format nil "#t~ap~a" thread-id next-post-number)
-                  :id (format nil "t~ap~a" thread-id next-post-number)
-                  (cl-who:str (format nil "~a" next-post-number))))
-         (:dd (cl-who:str (render-post-form board thread-id))))
+         (unless (is-board-locked board)
+           (cl-who:htm
+            (:dt (:a :href (format nil "#t~ap~a" thread-id next-post-number)
+                     :id (format nil "t~ap~a" thread-id next-post-number)
+                     (cl-who:str (format nil "~a" next-post-number))))
+            (:dd (cl-who:str (render-post-form board thread-id))))))
         (:hr)
         (cl-who:str (render-footer-html))))))
 
