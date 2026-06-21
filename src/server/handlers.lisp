@@ -11,7 +11,8 @@
                 #:render-list
                 #:render-preferences
                 #:render-error-page
-                #:render-thread)
+                #:render-thread
+                #:render-search-results)
   (:export #:handle-request))
 
 (in-package :cl-bbs/handlers)
@@ -111,6 +112,51 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                  (when data
                    (push (cons i data) threads)))))
     threads))
+
+(defun search-posts (query &optional board-filter)
+  "Searches across all boards (or a specific board if BOARD-FILTER is provided) for posts or headlines matching QUERY."
+  (let ((results '())
+        (sexp-dir (merge-pathnames "sexp/" *base-dir*)))
+    (when (and query (string/= "" (string-trim '(#\Space #\Tab #\Newline #\Return) query)))
+      (let ((board-dirs (if (and board-filter (string/= "" board-filter))
+                            (list (merge-pathnames (format nil "~a/" board-filter) sexp-dir))
+                            (and (probe-file sexp-dir) (uiop:subdirectories sexp-dir)))))
+        (dolist (board-dir board-dirs)
+          (let ((board-name (car (last (pathname-directory board-dir))))
+                ;; Get only files whose namestring consists only of digits (which are the thread S-expression files)
+                (thread-files (and (probe-file board-dir)
+                                   (remove-if-not (lambda (file)
+                                                    (let ((name (file-namestring file)))
+                                                      (and (string/= name "")
+                                                           (every #'digit-char-p name))))
+                                                  (uiop:directory-files board-dir)))))
+            (dolist (thread-file thread-files)
+              (let* ((thread-id (file-namestring thread-file))
+                     (thread-data (read-sexp-file thread-file))
+                     (raw-thread (if (and (consp thread-data)
+                                          (consp (car thread-data))
+                                          (consp (caar thread-data)))
+                                     (car thread-data)
+                                     thread-data))
+                     (headline (cdr (assoc 'cl-bbs/models:headline raw-thread)))
+                     (posts-assoc (assoc 'cl-bbs/models:posts raw-thread)))
+                (when posts-assoc
+                  (let ((posts (get-flat-posts posts-assoc)))
+                    (dolist (post posts)
+                      (let* ((post-id (car post))
+                             (post-data (cdr post))
+                             (content (cdr (assoc 'cl-bbs/models:content post-data)))
+                             (date (cdr (assoc 'cl-bbs/models:date post-data))))
+                        (when (or (and headline (search query headline :test #'char-equal))
+                                  (and content (search query content :test #'char-equal)))
+                          (push (list :board board-name
+                                      :thread-id thread-id
+                                      :headline (or headline "No Headline")
+                                      :post-id post-id
+                                      :date (or date "")
+                                      :content (or content ""))
+                                results))))))))))))
+    (nreverse results)))
 
 (defun get-flat-posts (posts-assoc)
   (when posts-assoc
@@ -477,6 +523,17 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
               `(200 (:content-type "application/json")
                     (,(uiop:read-file-string manifest-file)))
               `(404 (:content-type "text/plain") ("Manifest not found"))))))
+
+;; 6b. GET /search
+(setf (ningle:route *app* "/search" :method :GET)
+      (lambda (params)
+        (let* ((query (cdr (assoc "q" params :test #'string=)))
+               (board-filter (cdr (assoc "board" params :test #'string=)))
+               (env (lack.request:request-env ningle:*request*))
+               (theme (get-theme-from-env env))
+               (results (if query (search-posts query board-filter) nil)))
+          `(200 (:content-type "text/html; charset=utf-8")
+                (,(render-search-results (or query "") results theme))))))
 
 ;; 7. GET /:board/list
 (setf (ningle:route *app* "/:board/list" :method :GET)

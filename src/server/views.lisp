@@ -11,7 +11,8 @@
            #:render-thread
            #:render-preferences
            #:render-moderation
-           #:render-error-page))
+           #:render-error-page
+           #:render-search-results))
 
 (in-package :cl-bbs/views)
 
@@ -107,14 +108,18 @@ function validatePostForm(form, errorId) {
                                paths)
                        #'string<)))
     (cl-who:with-html-output-to-string (s nil :indent t)
-      (:p :class "boards" :style "text-align: left; font-size: 0.9em; margin: 0.5em 2% 1em 2%;"
-          "[ "
-          (loop for board in boards
-                for i from 0
-                unless (zerop i)
-                do (cl-who:str " | ")
-                do (cl-who:htm (:a :href (format nil "/~a/" board) (cl-who:esc board))))
-          " ]"))))
+      (:div :style "display: flex; justify-content: space-between; align-items: center; margin: 0.5em 2% 1em 2%;"
+            (:p :class "boards" :style "font-size: 0.9em; margin: 0;"
+                "[ "
+                (loop for board in boards
+                      for i from 0
+                      unless (zerop i)
+                      do (cl-who:str " | ")
+                      do (cl-who:htm (:a :href (format nil "/~a/" board) (cl-who:esc board))))
+                " ]")
+            (:form :action "/search" :method "GET" :style "margin: 0; display: inline-flex;"
+                   (:input :type "text" :name "q" :placeholder "Search posts..." :style "padding: 2px 5px; font-size: 0.85em; margin-right: 5px;")
+                   (:input :type "submit" :value "Search" :style "padding: 2px 8px; font-size: 0.85em;"))))))
 
 (defun render-menu (board selected)
   (cl-who:with-html-output-to-string (s nil :indent t)
@@ -616,3 +621,46 @@ function updateThemePreview(themeValue) {
                             (:br)
                             (:input :type "submit" :value "Save Changes"))))))))
              (cl-who:htm (:p "No comments found."))))))))
+
+(defun render-search-results (query results &optional theme)
+  "Renders the search results page HTML, showing matching posts for the given QUERY, using layout THEME."
+  (layout (format nil "Search: ~a - SchemeBBS" query) "search-results" theme
+    (cl-who:with-html-output-to-string (s nil :indent t)
+      (:h1 "Search Results")
+      (:p :style "margin: 0.5em 2%;"
+          (:a :href "/" "Back to Home") " - Query: " (:strong (cl-who:esc query)))
+      (:hr)
+      (if (null results)
+          (cl-who:htm (:p :style "margin: 2em; text-align: center;" "No results found matching your query."))
+          (cl-who:htm
+           (:dl :style "margin: 1em 2%;"
+                (dolist (match results)
+                  (let* ((board (getf match :board))
+                         (thread-id (getf match :thread-id))
+                         (headline (getf match :headline))
+                         (post-id (getf match :post-id))
+                         (date (getf match :date))
+                         (content (getf match :content))
+                         (post-style (if (string= theme "colored")
+                                         (let ((hue (get-hash-hue post-id)))
+                                           (format nil (concatenate 'string
+                                                                    "background-color: hsl(~D, 85%, 96%); "
+                                                                    "border-left: 4px solid hsl(~D, 85%, 45%); "
+                                                                    "padding: 0.5em 1em; "
+                                                                    "margin: 0.3em 0 1.2em 0; "
+                                                                    "border-radius: 0 4px 4px 0;")
+                                                   hue hue))
+                                         "")))
+                    (cl-who:htm
+                     (:dt :style "margin-top: 1.5em; font-size: 0.95em;"
+                          "[" (:a :href (format nil "/~a/" board) (cl-who:esc board)) "] "
+                          (:a :href (format nil "/~a/~a" board thread-id) (:strong (cl-who:esc headline)))
+                          " - Post "
+                          (:a :href (format nil "/~a/~a#t~ap~a" board thread-id thread-id post-id)
+                              (cl-who:str (format nil "#~a" post-id)))
+                          " "
+                          (:samp (cl-who:esc date)))
+                     (:dd :style post-style
+                          (cl-who:str (format-text content thread-id)))))))))
+      (:hr)
+      (cl-who:str (render-footer-html)))))

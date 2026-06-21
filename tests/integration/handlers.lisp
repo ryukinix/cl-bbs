@@ -147,3 +147,35 @@
     (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
     (is equal t (not (null (search "Go Back and Edit Post"
                                    (first (third res))))))))
+
+(define-test test-search-route-integration
+  :parent integration
+  ;; Ensure board dirs are created for testing board 'searchtest'
+  (cl-bbs/storage:ensure-board-dirs "searchtest")
+  (let ((thread-path (merge-pathnames "sexp/searchtest/1" cl-bbs/storage:*base-dir*))
+        (thread-data '((cl-bbs/models:headline . "Unicorns and Rainbows")
+                        (cl-bbs/models:posts . ((1 (cl-bbs/models:date . "2026-06-12")
+                                                    (cl-bbs/models:vip . nil)
+                                                    (cl-bbs/models:content . "I love magical creatures!")))))))
+    (cl-bbs/storage:write-sexp-file thread-path thread-data)
+    (unwind-protect
+         (progn
+           ;; 1. Request GET /search?q=magical
+           (let* ((env (list :path-info "/search" :request-method :get :query-string "q=magical"))
+                  (res (cl-bbs/handlers:handle-request env)))
+             (is = 200 (first res))
+             (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
+             (is equal t (not (null (search "Unicorns and Rainbows" (first (third res))))))
+             (is equal t (not (null (search "I love magical creatures!" (first (third res)))))))
+
+           ;; 2. Request GET /search?q=impossible-query (should render empty message)
+           (let* ((env (list :path-info "/search" :request-method :get :query-string "q=impossible-query"))
+                  (res (cl-bbs/handlers:handle-request env)))
+             (is = 200 (first res))
+             (is equal t (not (null (search "No results found matching your query." (first (third res))))))))
+      (when (probe-file thread-path)
+        (delete-file thread-path))
+      ;; Delete the board directory created
+      (let ((board-dir (merge-pathnames "sexp/searchtest/" cl-bbs/storage:*base-dir*)))
+        (when (probe-file board-dir)
+          (uiop:delete-directory-tree board-dir :validate t))))))
