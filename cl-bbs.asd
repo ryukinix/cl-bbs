@@ -89,8 +89,17 @@
                "dexador")
   :pathname "tests"
   :components ((:file "package")
-               (:file "main" :depends-on ("package")))
+               (:file "suites" :depends-on ("package"))
+               (:module "unit"
+                :depends-on ("suites")
+                :components ((:file "models")
+                             (:file "storage")
+                             (:file "views")
+                             (:file "handlers")
+                             (:file "admin")))
+               (:module "integration"
+                :depends-on ("suites")
+                :components ((:file "handlers")))
+               (:file "main" :depends-on ("unit" "integration")))
   :perform (test-op (o c)
-             (let ((report (symbol-call :parachute :test :cl-bbs/tests)))
-               (when (eq (symbol-call :parachute :status report) :failed)
-                 (uiop:quit 1)))))
+                    (symbol-call :cl-bbs/tests :run-tests)))

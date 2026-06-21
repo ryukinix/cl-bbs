@@ -32,10 +32,16 @@ docker-run: docker-build
 	# Note: default SchemeBBS port is 8222.
 	docker run --rm -it -p 8222:8222 -v $(PWD)/data:/cl-bbs/data $(DOCKER_IMG)
 
-.PHONY: check docker-check docker-build docker-lint lint lint-fix publish
+.PHONY: check check-unit check-integration docker-check docker-build docker-lint lint lint-fix publish
 
 check:
 	ros $(ROS_TEST_FLAGS) -e '(asdf:test-system :cl-bbs/tests)'
+
+check-unit:
+	ros $(ROS_TEST_FLAGS) -e "(cl-bbs/tests:run-tests 'cl-bbs/tests:unit)"
+
+check-integration:
+	ros $(ROS_TEST_FLAGS) -e "(cl-bbs/tests:run-tests 'cl-bbs/tests:integration)"
 
 docker-check: docker-build
 	docker run --rm --entrypoint=ros -e DEBUG -e ACTIONS_STEP_DEBUG \
