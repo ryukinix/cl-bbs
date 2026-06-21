@@ -61,6 +61,15 @@ Execute the automated Parachute test suite:
 make check
 ```
 
+## Configuration
+
+You can configure the server using environment variables:
+
+- `SBBS_DATADIR`: The directory where board S-expression database files are stored (default: `data/`).
+- `SBBS_LOCKED_BOARDS`: A comma-separated list of boards that should be locked in read-only mode. New threads cannot be created and comments/replies cannot be posted to these boards (e.g., `SBBS_LOCKED_BOARDS=foo,bar`). The posting forms will also be hidden on the frontend of these boards.
+- `SBBS_ADMIN_USER`: The username for the admin panel (default: `admin`).
+- `SBBS_ADMIN_PASSWORD`: The password for the admin panel (default: `superchanner`).
+
 ## Software Stack
 
 - **Lisp:** Common Lisp (SBCL) loaded via Roswell.
