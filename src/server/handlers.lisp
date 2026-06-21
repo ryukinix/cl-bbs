@@ -607,7 +607,8 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
 ;; 10. POST /:board/post (New Thread)
 (setf (ningle:route *app* "/:board/post" :method :POST)
       (lambda (params)
-        (let* ((board (cdr (assoc :board params)))
+        (block out
+          (let* ((board (cdr (assoc :board params)))
                (env (lack.request:request-env ningle:*request*))
                (parsed-params (get-body-params params env))
                (epistula (cdr (assoc "epistula" parsed-params :test #'string=)))
@@ -623,11 +624,15 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
               `(400 (:content-type "text/html; charset=utf-8")
                     (,(render-error-page "Post body cannot be empty" cl-bbs/views:*preferences*)))
               (progn
+                (unless (probe-file (merge-pathnames (format nil "sexp/~a/" board) *base-dir*))
+                   (return-from out
+                     `(403 (:content-type "text/html; charset=utf-8")
+                           (,(render-error-page "Only administrators can create new boards" cl-bbs/views:*preferences*)))))
                 (ensure-board-dirs board)
                 (create-thread thread-path titulus date epistula)
                 (add-thread-to-list list-path thread-number titulus date)
                 (add-thread-to-index index-path thread-number titulus date epistula)
-                `(303 (:location ,(format nil "/~a/" board)) ("Redirecting...")))))))
+                `(303 (:location ,(format nil "/~a/" board)) ("Redirecting..."))))))))
 
 ;; 11. GET /:board
 (setf (ningle:route *app* "/:board" :method :GET)
