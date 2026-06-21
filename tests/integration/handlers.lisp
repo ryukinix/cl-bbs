@@ -34,7 +34,7 @@
     (is equal "text/html; charset=utf-8" (second (second res))))
 
   ;; 5. POST Preferences /foo/preferences
-  (let* ((body-str "theme=dark&default_board=foo")
+  (let* ((body-str "theme=dark&default_board=foo&search_hide_input=yes&search_local_only=yes&search_position=bottom")
          (body-bytes (flexi-streams:string-to-octets body-str :external-format :utf-8))
          (stream (flexi-streams:make-in-memory-input-stream body-bytes))
          (env (list :path-info "/foo/preferences"
@@ -44,16 +44,25 @@
          (res (cl-bbs/handlers:handle-request env))
          (headers (second res))
          (has-theme-cookie nil)
-         (has-board-cookie nil))
+         (has-board-cookie nil)
+         (has-hide-cookie nil)
+         (has-local-cookie nil)
+         (has-pos-cookie nil))
     (loop for (key val) on headers by #'cddr
           when (and (keywordp key) (string-equal (symbol-name key) "set-cookie"))
             do (cond
                  ((search "theme=dark;" val) (setf has-theme-cookie t))
-                 ((search "default_board=foo;" val) (setf has-board-cookie t))))
+                 ((search "default_board=foo;" val) (setf has-board-cookie t))
+                 ((search "search_hide_input=yes;" val) (setf has-hide-cookie t))
+                 ((search "search_local_only=yes;" val) (setf has-local-cookie t))
+                 ((search "search_position=bottom;" val) (setf has-pos-cookie t))))
     (is = 303 (first res))
     (is equal "/foo/preferences" (getf headers :location))
     (true has-theme-cookie)
-    (true has-board-cookie))
+    (true has-board-cookie)
+    (true has-hide-cookie)
+    (true has-local-cookie)
+    (true has-pos-cookie))
 
   ;; 6. GET sw.js /sw.js
   (let* ((env (list :path-info "/sw.js" :request-method :get))
