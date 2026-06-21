@@ -106,3 +106,42 @@
       (let ((board-dir (merge-pathnames "sexp/searchtest/" cl-bbs/storage:*base-dir*)))
         (when (probe-file board-dir)
           (uiop:delete-directory-tree board-dir :validate t))))))
+
+(define-test test-shame-thread-file
+  :parent unit
+  (cl-bbs/storage:ensure-board-dirs "shametest")
+  (cl-bbs/storage:ensure-board-dirs "shame")
+  (let ((thread-path (merge-pathnames "sexp/shametest/1" cl-bbs/storage:*base-dir*))
+        (thread-data '((cl-bbs/models:headline . "Shame Test Thread")
+                       (cl-bbs/models:posts . ((1 (cl-bbs/models:date . "2026-06-12")
+                                                   (cl-bbs/models:vip . nil)
+                                                   (cl-bbs/models:content . "This thread deserves shame.")))))))
+    (cl-bbs/storage:write-sexp-file thread-path thread-data)
+    (cl-bbs/handlers::regenerate-board-index "shametest")
+    (cl-bbs/handlers::shame-thread-file "shametest" "1")
+    ;; Check if the thread was moved to "shame" board
+    (let* ((shame-dir (merge-pathnames "sexp/shame/" cl-bbs/storage:*base-dir*))
+           (files (and (probe-file shame-dir) (uiop:directory-files shame-dir))))
+      ;; There should be at least one file that is the moved thread (its name will be an integer)
+      (true (some (lambda (file)
+                       (let ((name (pathname-name file)))
+                         (handler-case (and (parse-integer name)
+                                            (string= (cdr (assoc 'cl-bbs/models:headline (cl-bbs/storage:read-sexp-file file)))
+                                                     "Shame Test Thread"))
+                           (error () nil))))
+                     files))
+      ;; The original thread in "shametest" should be gone
+      (false (probe-file thread-path))
+      ;; Clean up moved files in "shame" board
+      (dolist (file files)
+        (let ((name (pathname-name file)))
+          (when (handler-case (parse-integer name) (error () nil))
+            (let ((data (cl-bbs/storage:read-sexp-file file)))
+              (when (string= (cdr (assoc 'cl-bbs/models:headline data)) "Shame Test Thread")
+                (delete-file file))))))
+      ;; Regenerate indexes to clean up
+      (cl-bbs/handlers::regenerate-board-index "shame"))
+    ;; Clean up shametest board
+    (let ((board-dir (merge-pathnames "sexp/shametest/" cl-bbs/storage:*base-dir*)))
+      (when (probe-file board-dir)
+        (uiop:delete-directory-tree board-dir :validate t)))))
