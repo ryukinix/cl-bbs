@@ -26,7 +26,7 @@
   (when *server*
     (stop-app))
   (setf *app* (build-app))
-  (setf *server* (clack:clackup *app* :host host
+  (setf *server* (clack:clackup *app* :address host
                                       :port port
                                       :server :hunchentoot
                                       :use-thread async))

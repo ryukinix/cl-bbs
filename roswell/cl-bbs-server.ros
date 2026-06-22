@@ -20,7 +20,7 @@ exec ros -Q -- $0 "$@"
 
 (defun main (&rest argv)
   (declare (ignorable argv))
-  (let* ((port (parse-integer
+  (let ((port (parse-integer
                 (or (car argv)
                     (uiop:getenv "PORT")
                     "8222")))
