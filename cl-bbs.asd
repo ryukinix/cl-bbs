@@ -59,6 +59,7 @@
                "yason"
                "lack"
                "lack-middleware-static"
+               "lack-middleware-accesslog"
                "bordeaux-threads")
   :pathname "src"
   :components ((:file "package")

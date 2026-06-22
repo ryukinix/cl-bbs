@@ -57,6 +57,14 @@
               :target "_blank"
               (cl-who:esc hash))))))
 
+(defun render-board-name (board)
+  (cl-who:with-html-output-to-string (s nil :indent t)
+    (:h1
+     (cl-who:esc
+      (if (is-board-locked board)
+          (concatenate 'string board " 🔒")
+          board)))))
+
 (defun get-hash-hue (id-val)
   (let ((id-num (cond ((integerp id-val) id-val)
                       ((stringp id-val) (or (handler-case (parse-integer id-val :junk-allowed t)
@@ -454,7 +462,7 @@ function validatePostForm(form, errorId) {
 and the new thread form, using layout PREFS."
   (layout (format nil "/~a/ - SchemeBBS" board) nil (preferences-theme prefs)
     (cl-who:with-html-output-to-string (s nil :indent t)
-      (:h1 (cl-who:esc board))
+      (cl-who:str (render-board-name board))
       (cl-who:str (render-menu board "front"))
       (:hr)
       (loop for t-data in threads
@@ -469,7 +477,7 @@ and the new thread form, using layout PREFS."
   "Renders the board thread-list HTML page, showing all THREADS in tabular format, using layout PREFS."
   (layout (format nil "/~a/ - SchemeBBS" board) nil (preferences-theme prefs)
     (cl-who:with-html-output-to-string (s nil :indent t)
-      (:h1 (cl-who:esc board))
+      (cl-who:str (render-board-name board))
       (cl-who:str (render-menu board "thread list"))
       (:hr)
       (:table :summary "Thread list"
@@ -527,7 +535,7 @@ optionally filtered by RANGE-STRING, using layout PREFS."
                           (lambda (id) (declare (ignore id)) t))))
     (layout (format nil "/~a/ - SchemeBBS" board) "thread" theme
       (cl-who:with-html-output-to-string (s nil :indent t)
-        (:h1 (cl-who:esc board))
+        (cl-who:str (render-board-name board))
         (cl-who:str (render-menu board "thread"))
         (:hr)
         (let ((heading-style (if (string= theme "colored")
@@ -584,7 +592,7 @@ stylesheet THEME, default-board and search configuration."
          (search-position (preferences-search-position prefs)))
     (layout (format nil "/~a/ - Preferences" board) "preferences" theme
       (cl-who:with-html-output-to-string (s nil :indent t)
-        (:h1 (cl-who:esc board))
+        (cl-who:str (render-board-name board))
         (cl-who:str (render-menu board "preferences"))
         (:hr)
         (:h2 "Preferences")
