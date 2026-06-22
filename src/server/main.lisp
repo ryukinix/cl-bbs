@@ -1,4 +1,4 @@
-(in-package :cl-bbs/package)
+(in-package :cl-bbs/server)
 
 (defvar *server* nil)
 (defvar *app* nil)
@@ -10,12 +10,15 @@
    (lambda (env)
      (cl-bbs/handlers:handle-request env))))
 
-(defun start-app (port)
+(defun start-app (host port &key (async t))
   "Starts the Hunchentoot server running the cl-bbs application on the specified PORT."
   (when *server*
     (stop-app))
   (setf *app* (build-app))
-  (setf *server* (clack:clackup *app* :port port :server :hunchentoot))
+  (setf *server* (clack:clackup *app* :host host
+                                      :port port
+                                      :server :hunchentoot
+                                      :use-thread async))
   (format t "cl-bbs running on port ~a~%" port)
   t)
 
