@@ -1,12 +1,11 @@
 github cl-ppcre edicl/cl-ppcre
 ql local-time
 ql clack
+ql lack
 ql hunchentoot
 ql ningle
 ql cl-who
 ql yason
-ql lack
-ql lack-middleware-accesslog
 ql bordeaux-threads
 ql parachute
 ql dexador
