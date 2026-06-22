@@ -3,10 +3,21 @@
 (defvar *server* nil)
 (defvar *app* nil)
 
+(defun make-real-ip-middleware (app)
+  (lambda (env)
+    (let ((x-forwarded-for (gethash "x-forwarded-for" (getf env :headers))))
+      ;; If X-Forwarded-For exists, update REMOTE_ADDR to the first IP in the list
+      (when x-forwarded-for
+        (let ((real-ip (first (uiop:split-string x-forwarded-for :separator '(#\,)))))
+          (setf (getf env :remote-addr) (string-trim " " real-ip)))))
+    (funcall app env)))
+
 (defun build-app ()
   (lack:builder
    (:static :path "/static/"
             :root (merge-pathnames "static/" (asdf:system-source-directory :cl-bbs/server)))
+   (lambda (app) (make-real-ip-middleware app))
+   :accesslog
    (lambda (env)
      (cl-bbs/handlers:handle-request env))))
 
