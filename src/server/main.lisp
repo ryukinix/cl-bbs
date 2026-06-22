@@ -15,7 +15,7 @@
 (defun build-app ()
   (lack:builder
    (:static :path "/static/"
-            :root (merge-pathnames "static/" (asdf:system-source-directory :cl-bbs/server)))
+            :root (merge-pathnames "src/static/" (asdf:system-source-directory :cl-bbs/server)))
    (lambda (app) (make-real-ip-middleware app))
    :accesslog
    (lambda (env)
