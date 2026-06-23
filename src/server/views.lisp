@@ -15,6 +15,7 @@
            #:render-moderation
            #:render-error-page
            #:render-search-results
+           #:render-playground
            #:preferences
            #:make-preferences
            #:preferences-theme
@@ -108,7 +109,8 @@ function validatePostForm(form, errorId) {
   }
   return true;
 }
-"))
+")
+       (:script :src "/static/jscl-snippets.js" :defer t))
       (:body :class ,class
              (cl-who:str (render-boards-header))
              (:hr)
@@ -140,7 +142,8 @@ function validatePostForm(form, errorId) {
        (not (uiop:string-prefix-p "/admin" path))
        (not (uiop:string-prefix-p "/about" path))
        (not (uiop:string-prefix-p "/sw.js" path))
-       (not (uiop:string-prefix-p "/manifest.json" path))))
+       (not (uiop:string-prefix-p "/manifest.json" path))
+       (not (uiop:string-prefix-p "/playground" path))))
 
 (defun get-current-board-from-path (path)
   "Extracts the board name from the request PATH."
@@ -212,15 +215,19 @@ function validatePostForm(form, errorId) {
             (cl-who:str "front")
             (cl-who:htm (:a :href (format nil "/~a" board) "front")))
         " - "
-        (if (string= selected "thread list")
-            (cl-who:str "thread list")
-            (cl-who:htm (:a :href (format nil "/~a/list" board) "thread list")))
+        (if (string= selected "list")
+            (cl-who:str "list")
+            (cl-who:htm (:a :href (format nil "/~a/list" board) "list")))
         " - "
         (if (string= selected "front")
-            (cl-who:htm (:a :href "#newthread" "new thread"))
-            (cl-who:htm (:a :href (format nil "/~a#newthread" board) "new thread")))
+            (cl-who:htm (:a :href "#newthread" "new"))
+            (cl-who:htm (:a :href (format nil "/~a#newthread" board) "new")))
         " - "
         (:a :href (format nil "/~a/preferences" board) "preferences")
+        " - "
+        (if (string= selected "playground")
+            (cl-who:str "λ")
+            (cl-who:htm (:a :href (format nil "/~a/playground" board) "λ")))
         " - "
         (:a :href "/index.html" "?"))))
 
@@ -245,6 +252,15 @@ function validatePostForm(form, errorId) {
                  (:p (:input :type "text" :name "name" :style "display:none")
                      (:input :type "text" :name "message" :style "display:none")
                      (:input :type "submit" :value "Post"))))))
+
+(defun unescape-html (string)
+  (let ((s string))
+    (setf s (cl-ppcre:regex-replace-all "&quot;" s "\""))
+    (setf s (cl-ppcre:regex-replace-all "&lt;" s "<"))
+    (setf s (cl-ppcre:regex-replace-all "&gt;" s ">"))
+    (setf s (cl-ppcre:regex-replace-all "&#39;" s "'"))
+    (setf s (cl-ppcre:regex-replace-all "&amp;" s "&"))
+    s))
 
 (defun format-text (text &optional thread-id)
   (let* ((escaped (cl-who:escape-string text))
@@ -350,7 +366,20 @@ function validatePostForm(form, errorId) {
                processed
                (lambda (match-string &optional regs)
                  (declare (ignore match-string regs))
-                 (format nil "</p><pre>~a</pre><p>" content))
+                 (multiple-value-bind (match-start match-end reg-starts reg-ends)
+                     (cl-ppcre:scan "^(?i)(lisp|cl|common-lisp)\\r?\\n" content)
+                   (declare (ignore reg-starts reg-ends))
+                   (if match-start
+                       (let* ((escaped-code (subseq content match-end))
+                              (raw-code (unescape-html escaped-code))
+                              (colorized-code (handler-case (colorize:html-colorization :common-lisp raw-code)
+                                                (error () (cl-who:escape-string raw-code)))))
+                         ;; Note: colorize already wraps the result in <span class="..."><span class="paren1">...</span></span>
+                         ;; We wrap it in <pre class="lisp-code-block"> but keep a data-raw-code attribute or just use content for JS execution.
+                         ;; JSCL needs the raw text. To avoid JSCL trying to parse HTML, we'll embed the raw code in a hidden div,
+                         ;; or rely on JS `textContent` which extracts raw text from nested HTML elements. `textContent` works well.
+                         (format nil "</p><pre class=\"lisp-code-block\">~a</pre><p>" colorized-code))
+                       (format nil "</p><pre>~a</pre><p>" content))))
                :simple-calls t))))
     (setf processed
           (cl-ppcre:regex-replace-all
@@ -478,7 +507,7 @@ and the new thread form, using layout PREFS."
   (layout (format nil "/~a/ - SchemeBBS" board) nil (preferences-theme prefs)
     (cl-who:with-html-output-to-string (s nil :indent t)
       (cl-who:str (render-board-name board))
-      (cl-who:str (render-menu board "thread list"))
+      (cl-who:str (render-menu board "list"))
       (:hr)
       (:table :summary "Thread list"
               (:thead (:tr (:th "#") (:th "headline") (:th "posts") (:th "last update")))
@@ -871,5 +900,64 @@ function updateThemePreview(themeValue) {
                             (:samp (cl-who:esc date)))
                        (:dd :style post-style
                             (cl-who:str (format-text content thread-id)))))))))
+        (:hr)
+        (cl-who:str (render-footer-html))))))
+
+(defun render-playground (&optional board (prefs *preferences*))
+  "Renders the interactive Common Lisp playground view."
+  (let ((theme (preferences-theme prefs)))
+    (layout (if board (format nil "/~a/ - Lisp Playground" board) "Lisp Playground")
+            "playground-page"
+            theme
+      (cl-who:with-html-output-to-string (s nil :indent t)
+        (when board
+          (cl-who:htm (cl-who:str (render-menu board "playground"))))
+        (:h2 "Common Lisp Playground")
+        (:p :style "margin: 0.5em 2%; font-size: 0.95em;"
+            "Write and execute Common Lisp code directly in your browser using "
+            (:a :href "https://github.com/jscl-project/jscl" :target "_blank" "JSCL")
+            ". Everything runs completely client-side in a sandboxed environment.")
+        (:div :class "playground-container" :style "margin: 1.5em 2%;"
+              (:div :style "margin-bottom: 1em; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;"
+                    (:span "Load Example: ")
+                    (:select :id "playground-examples" :style "padding: 4px;"
+                             (:option :value "" "-- Select Example --")
+                             (:option :value "hello" "Hello World")
+                             (:option :value "fib" "Fibonacci Numbers")
+                             (:option :value "loop" "Loop Macro")
+                             (:option :value "clos" "Common Lisp Object System (CLOS)")))
+              (:div :id "example-data-hello" :style "display:none;" (cl-who:str (colorize:html-colorization :common-lisp "(format t \"Hello, World!~%\")")))
+              (:div :id "example-data-fib" :style "display:none;" (cl-who:str (colorize:html-colorization :common-lisp "(defun fib (n)
+  (if (< n 2)
+      n
+      (+ (fib (- n 1)) (fib (- n 2)))))
+
+(format t \"Fibonacci of 10 is: ~a~%\" (fib 10))")))
+              (:div :id "example-data-loop" :style "display:none;" (cl-who:str (colorize:html-colorization :common-lisp "(loop for x from 1 to 5
+      do (format t \"Square of ~d is ~d~%\" x (* x x)))")))
+              (:div :id "example-data-clos" :style "display:none;" (cl-who:str (colorize:html-colorization :common-lisp "(defclass person ()
+  ((name :accessor person-name :initarg :name)
+   (age :accessor person-age :initarg :age)))
+
+(defmethod introduce ((p person))
+  (format t \"Hi, I am ~a and I am ~a years old.~%\"
+          (person-name p)
+          (person-age p)))
+
+(let ((p (make-instance 'person :name \"Alice\" :age 30)))
+  (introduce p))")))
+              (:pre :id "playground-editor"
+                    :class "lisp-code-block"
+                    :contenteditable "true"
+                    :spellcheck "false"
+                    :style "min-height: 200px; width: 96%; max-width: 800px; font-family: monospace; font-size: 1.1em; padding: 10px; border: 1px solid currentColor; background: transparent; color: inherit; margin-bottom: 1em; outline: none; overflow: auto; white-space: pre-wrap;"
+                    "")
+              (:div :style "display: flex; gap: 10px; margin-bottom: 1em;"
+                    (:button :id "playground-run" :style "padding: 6px 15px; font-size: 1em; cursor: pointer; font-weight: bold;" "Run Code")
+                    (:button :id "playground-clear" :style "padding: 6px 15px; font-size: 1em; cursor: pointer;" "Clear Output"))
+              (:h3 "Output Console")
+              (:pre :id "playground-output"
+                    :style "display: none; padding: 10px; width: 96%; max-width: 800px; border: 1px dashed currentColor; background-color: rgba(128, 128, 128, 0.05); white-space: pre-wrap; word-break: break-all; font-family: monospace; font-size: 1.1em; line-height: 1.4em;"
+                    ""))
         (:hr)
         (cl-who:str (render-footer-html))))))
