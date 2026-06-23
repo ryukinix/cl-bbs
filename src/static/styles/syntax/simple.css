@@ -1,0 +1,14 @@
+/* Simple Syntax Highlighting for Lisp (Colorize output) */
+.lisp-code-block { color: #888888; } /* Default to gray for everything else */
+.lisp-code-block .string { color: #888888; }
+.lisp-code-block .comment { color: #888888; font-style: italic; }
+.lisp-code-block .symbol { color: #888888; }
+.lisp-code-block .keyword { color: royalblue; font-weight: bold; }
+.lisp-code-block .character { color: #888888; }
+.lisp-code-block .special { color: #888888; }
+.lisp-code-block .paren1 { color: #888888; }
+.lisp-code-block .paren2 { color: #888888; }
+.lisp-code-block .paren3 { color: #888888; }
+.lisp-code-block .paren4 { color: #888888; }
+.lisp-code-block .paren5 { color: #888888; }
+.lisp-code-block .paren6 { color: #888888; }

@@ -220,19 +220,5 @@ body.moderation .comment-preview {
   }
 }
 
-/* Syntax Highlighting for Lisp (Colorize output) */
-.lisp-code-block .string { color: #d14; }
-.lisp-code-block .comment { color: #998; font-style: italic; }
-.lisp-code-block .symbol { color: #008080; }
-.lisp-code-block .keyword { color: #000080; font-weight: bold; }
-.lisp-code-block .character { color: #099; }
-.lisp-code-block .special { color: #0086B3; }
-.lisp-code-block .paren1 { color: #aa0000; }
-.lisp-code-block .paren2 { color: #00aa00; }
-.lisp-code-block .paren3 { color: #0000aa; }
-.lisp-code-block .paren4 { color: #aaaa00; }
-.lisp-code-block .paren5 { color: #00aaaa; }
-.lisp-code-block .paren6 { color: #aa00aa; }
-
-/* In dark themes, these colors might need an override, but this provides a base */
+/* Syntax highlighting is now handled via separate syntax theme CSS files */
 

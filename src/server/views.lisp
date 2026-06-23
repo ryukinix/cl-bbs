@@ -19,6 +19,7 @@
            #:preferences
            #:make-preferences
            #:preferences-theme
+           #:preferences-syntax-theme
            #:preferences-default-board
            #:preferences-search-hide-input
            #:preferences-search-local-only
@@ -29,6 +30,7 @@
 
 (defstruct preferences
   (theme "default")
+  (syntax-theme "simple")
   (default-board "")
   (search-hide-input "no")
   (search-local-only "no")
@@ -74,7 +76,7 @@
                       (t 0))))
     (mod (* id-num 137) 360)))
 
-(defmacro layout (title class theme &body body)
+(defmacro layout (title class prefs &body body)
   `(cl-who:with-html-output-to-string (s nil :prologue "<!DOCTYPE html>" :indent t)
      (:html
       (:head
@@ -84,7 +86,10 @@
        (:link :rel "manifest" :href "/manifest.json")
        (:link :rel "icon" :href "/static/favicon.ico" :type "image/png")
        (:link :rel "stylesheet"
-              :href (format nil "/static/styles/themes/~a.css" (or ,theme "default"))
+              :href (format nil "/static/styles/themes/~a.css" (or (preferences-theme ,prefs) "default"))
+              :type "text/css")
+       (:link :rel "stylesheet"
+              :href (format nil "/static/styles/syntax/~a.css" (or (preferences-syntax-theme ,prefs) "simple"))
               :type "text/css")
        (:script "if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -122,7 +127,7 @@ function validatePostForm(form, errorId) {
 
 (defun render-error-page (error-message &optional (prefs *preferences*))
   "Renders an HTML error page displaying the given ERROR-MESSAGE, using the specified layout PREFS."
-  (layout "Error - SchemeBBS" "error-page" (preferences-theme prefs)
+  (layout "Error - SchemeBBS" "error-page" prefs
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:h1 "Error")
       (:hr)
@@ -259,6 +264,18 @@ function validatePostForm(form, errorId) {
     (setf s (cl-ppcre:regex-replace-all "&lt;" s "<"))
     (setf s (cl-ppcre:regex-replace-all "&gt;" s ">"))
     (setf s (cl-ppcre:regex-replace-all "&#39;" s "'"))
+    (setf s (cl-ppcre:regex-replace-all "&#039;" s "'"))
+    (setf s (cl-ppcre:regex-replace-all "&apos;" s "'"))
+    (setf s (cl-ppcre:regex-replace-all "&#[xX]([0-9a-fA-F]+);" s
+                                        (lambda (match-string hex-str)
+                                          (declare (ignore match-string))
+                                          (string (code-char (parse-integer hex-str :radix 16))))
+                                        :simple-calls t))
+    (setf s (cl-ppcre:regex-replace-all "&#([0-9]+);" s
+                                        (lambda (match-string dec-str)
+                                          (declare (ignore match-string))
+                                          (string (code-char (parse-integer dec-str :radix 10))))
+                                        :simple-calls t))
     (setf s (cl-ppcre:regex-replace-all "&amp;" s "&"))
     s))
 
@@ -490,7 +507,7 @@ function validatePostForm(form, errorId) {
 (defun render-index (board threads &optional (prefs *preferences*))
   "Renders the board index (frontpage) HTML with the list of active THREADS
 and the new thread form, using layout PREFS."
-  (layout (format nil "/~a/ - SchemeBBS" board) nil (preferences-theme prefs)
+  (layout (format nil "/~a/ - SchemeBBS" board) nil prefs
     (cl-who:with-html-output-to-string (s nil :indent t)
       (cl-who:str (render-board-name board))
       (cl-who:str (render-menu board "front"))
@@ -505,7 +522,7 @@ and the new thread form, using layout PREFS."
 
 (defun render-list (board threads &optional (prefs *preferences*))
   "Renders the board thread-list HTML page, showing all THREADS in tabular format, using layout PREFS."
-  (layout (format nil "/~a/ - SchemeBBS" board) nil (preferences-theme prefs)
+  (layout (format nil "/~a/ - SchemeBBS" board) nil prefs
     (cl-who:with-html-output-to-string (s nil :indent t)
       (cl-who:str (render-board-name board))
       (cl-who:str (render-menu board "list"))
@@ -563,7 +580,7 @@ optionally filtered by RANGE-STRING, using layout PREFS."
                                              do (setf (gethash id allowed-ids) t))))))))
                             (lambda (id) (gethash id allowed-ids)))
                           (lambda (id) (declare (ignore id)) t))))
-    (layout (format nil "/~a/ - SchemeBBS" board) "thread" theme
+    (layout (format nil "/~a/ - SchemeBBS" board) "thread" prefs
       (cl-who:with-html-output-to-string (s nil :indent t)
         (cl-who:str (render-board-name board))
         (cl-who:str (render-menu board "thread"))
@@ -616,11 +633,12 @@ stylesheet THEME, default-board and search configuration."
                                paths)
                        #'string<))
          (theme (preferences-theme prefs))
+         (syntax-theme (preferences-syntax-theme prefs))
          (default-board (preferences-default-board prefs))
          (search-hide-input (preferences-search-hide-input prefs))
          (search-local-only (preferences-search-local-only prefs))
          (search-position (preferences-search-position prefs)))
-    (layout (format nil "/~a/ - Preferences" board) "preferences" theme
+    (layout (format nil "/~a/ - Preferences" board) "preferences" prefs
       (cl-who:with-html-output-to-string (s nil :indent t)
         (cl-who:str (render-board-name board))
         (cl-who:str (render-menu board "preferences"))
@@ -640,6 +658,20 @@ stylesheet THEME, default-board and search configuration."
                                               :value item
                                               :checked (and theme (string= theme item))
                                               :onchange "updateThemePreview(this.value)")
+                                      (:span :class "theme-option-text" (cl-who:str item)))))))
+
+               (:div :style "margin-bottom: 2em;"
+                     (:h3 :style "margin-bottom: 0.5em;" "Syntax Theme")
+                     (:p :style "color: #555; font-size: 0.9em; margin-bottom: 0.8em;"
+                         "Choose syntax highlighting color scheme for Lisp code.")
+                     (:div :class "syntax-theme-selector-container"
+                           (dolist (item '("simple" "colorful"))
+                             (cl-who:htm
+                              (:label :class "theme-option-label" :style "margin-right: 15px;"
+                                      (:input :type "radio"
+                                              :name "syntax_theme"
+                                              :value item
+                                              :checked (and syntax-theme (string= syntax-theme item)))
                                       (:span :class "theme-option-text" (cl-who:str item)))))))
 
                (:div :style "margin-bottom: 2em;"
@@ -716,7 +748,7 @@ function updateThemePreview(themeValue) {
 (defun render-moderation (boards &optional board threads thread comments (prefs *preferences*) headline)
   "Renders the admin/moderation control panel HTML page showing BOARDS and allowing deletions/edits."
   (let ((theme (preferences-theme prefs)))
-    (layout "cl-bbs Moderation Panel" "moderation" theme
+    (layout "cl-bbs Moderation Panel" "moderation" prefs
       (cl-who:with-html-output-to-string (s nil :indent t)
         (:h1 "Moderation Panel")
         (:p (:a :href "/" "Back to Home"))
@@ -859,7 +891,7 @@ function updateThemePreview(themeValue) {
 (defun render-search-results (query results &optional (prefs *preferences*))
   "Renders the search results page HTML, showing matching posts for the given QUERY, using layout PREFS."
   (let ((theme (preferences-theme prefs)))
-    (layout (format nil "Search: ~a - SchemeBBS" query) "search-results" theme
+    (layout (format nil "Search: ~a - SchemeBBS" query) "search-results" prefs
       (cl-who:with-html-output-to-string (s nil :indent t)
         (:h1 "Search Results")
         (:p :style "margin: 0.5em 2%;"
@@ -911,7 +943,7 @@ function updateThemePreview(themeValue) {
   (let ((theme (preferences-theme prefs)))
     (layout (if board (format nil "/~a/ - Lisp Playground" board) "Lisp Playground")
             "playground-page"
-            theme
+            prefs
       (cl-who:with-html-output-to-string (s nil :indent t)
         (when board
           (cl-who:htm (cl-who:str (render-menu board "playground"))))
