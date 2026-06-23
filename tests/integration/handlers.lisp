@@ -120,6 +120,20 @@
       (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
       (is equal t (not (null (search "This is a test post" (first (third res)))))))
 
+    ;; Test Global Playground GET /playground
+    (let* ((env (list :path-info "/playground" :request-method :get))
+           (res (cl-bbs/handlers:handle-request env)))
+      (is = 200 (first res))
+      (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
+      (is equal t (not (null (search "Common Lisp Playground" (first (third res)))))))
+
+    ;; Test Board Playground GET /foo/playground
+    (let* ((env (list :path-info "/foo/playground" :request-method :get))
+           (res (cl-bbs/handlers:handle-request env)))
+      (is = 200 (first res))
+      (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
+      (is equal t (not (null (search "Common Lisp Playground" (first (third res)))))))
+
     (when (probe-file thread-path)
       (delete-file thread-path))))
 

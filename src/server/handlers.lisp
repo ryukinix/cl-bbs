@@ -13,7 +13,8 @@
                 #:render-preferences
                 #:render-error-page
                 #:render-thread
-                #:render-search-results)
+                #:render-search-results
+                #:render-playground)
   (:export #:handle-request))
 
 (in-package :cl-bbs/handlers)
@@ -598,6 +599,20 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                (results (if query (search-posts query board-filter) nil)))
           `(200 (:content-type "text/html; charset=utf-8")
                 (,(render-search-results (or query "") results cl-bbs/views:*preferences*))))))
+
+;; 6c. GET /playground (Global Playground)
+(setf (ningle:route *app* "/playground" :method :GET)
+      (lambda (params)
+        (declare (ignore params))
+        `(200 (:content-type "text/html; charset=utf-8")
+              (,(render-playground nil)))))
+
+;; 6d. GET /:board/playground (Board-scoped Playground)
+(setf (ningle:route *app* "/:board/playground" :method :GET)
+      (lambda (params)
+        (let ((board (cdr (assoc :board params))))
+          `(200 (:content-type "text/html; charset=utf-8")
+                (,(render-playground board))))))
 
 ;; 7. GET /:board/list
 (setf (ningle:route *app* "/:board/list" :method :GET)
