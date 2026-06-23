@@ -609,6 +609,18 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
           `(200 (:content-type "text/html; charset=utf-8")
                 (,(render-search-results (or query "") results cl-bbs/views:*preferences*))))))
 
+;; 6b-api. POST /api/colorize
+(setf (ningle:route *app* "/api/colorize" :method :POST)
+      (lambda (params)
+        (let* ((env (lack.request:request-env ningle:*request*))
+               (parsed-params (get-body-params params env))
+               (code (cdr (assoc "code" parsed-params :test #'string=))))
+          (if code
+              `(200 (:content-type "text/html; charset=utf-8")
+                    (,(handler-case (colorize:html-colorization :common-lisp code)
+                        (error () (cl-who:escape-string code)))))
+              `(400 (:content-type "text/plain") ("No code provided"))))))
+
 ;; 6c. GET /playground (Global Playground)
 (setf (ningle:route *app* "/playground" :method :GET)
       (lambda (params)

@@ -102,6 +102,21 @@ function initInlineSnippets() {
         block.style.padding = '';
         editBtn.textContent = 'Edit';
         isEditing = false;
+
+        // Fetch colorized version from backend API
+        const code = block.textContent;
+        fetch('/api/colorize', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: 'code=' + encodeURIComponent(code)
+        })
+        .then(response => response.text())
+        .then(html => {
+          block.innerHTML = html;
+        })
+        .catch(err => console.error("Failed to colorize snippet:", err));
       }
     });
 
@@ -258,6 +273,21 @@ ${code}
 
         outputPanel.textContent = displayResult;
         outputPanel.style.color = '';
+
+        // Dynamically update the editor syntax highlighting using backend colorize API
+        fetch('/api/colorize', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: 'code=' + encodeURIComponent(code)
+        })
+        .then(response => response.text())
+        .then(html => {
+          editor.innerHTML = html;
+        })
+        .catch(err => console.error("Failed to colorize playground code:", err));
+
       } catch (err) {
         outputPanel.textContent = `Error: ${err.message || err}`;
         outputPanel.style.color = 'red';
