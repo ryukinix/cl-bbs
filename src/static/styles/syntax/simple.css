@@ -1,14 +1,19 @@
 /* Simple Syntax Highlighting for Lisp (Colorize output) */
-.lisp-code-block { color: #888888; } /* Default to gray for everything else */
-.lisp-code-block .string { color: #888888; }
-.lisp-code-block .comment { color: #888888; font-style: italic; }
-.lisp-code-block .symbol { color: #1e90ff; }
-.lisp-code-block .keyword { color: royalblue; font-weight: bold; }
-.lisp-code-block .character { color: #888888; }
-.lisp-code-block .special { color: #888888; }
-.lisp-code-block .paren1 { color: #888888; }
-.lisp-code-block .paren2 { color: #888888; }
-.lisp-code-block .paren3 { color: #888888; }
-.lisp-code-block .paren4 { color: #888888; }
-.lisp-code-block .paren5 { color: #888888; }
-.lisp-code-block .paren6 { color: #888888; }
+.lisp-code-block { 
+  background-color: #121214 !important; /* Rich dark background to improve contrast */
+  color: #b0b0b0 !important; /* Slightly lighter/clearer gray for base code */
+  padding: 10px !important;
+}
+
+.lisp-code-block .string { color: #b0b0b0; }
+.lisp-code-block .comment { color: #808080; font-style: italic; }
+.lisp-code-block .symbol { color: #1e90ff; font-style: normal !important; } /* Explicitly remove italic */
+.lisp-code-block .keyword { color: #5c87ff; font-weight: bold; } /* Vibrant royalblue for dark contrast */
+.lisp-code-block .character { color: #b0b0b0; }
+.lisp-code-block .special { color: #b0b0b0; }
+.lisp-code-block .paren1 { color: #b0b0b0; }
+.lisp-code-block .paren2 { color: #b0b0b0; }
+.lisp-code-block .paren3 { color: #b0b0b0; }
+.lisp-code-block .paren4 { color: #b0b0b0; }
+.lisp-code-block .paren5 { color: #b0b0b0; }
+.lisp-code-block .paren6 { color: #b0b0b0; }
