@@ -184,3 +184,55 @@ body.moderation .comment-preview {
   background-color: #fafafa;
   border-left: 3px solid #ccc;
 }
+
+/* Lisp Interactive Snippets & Playground Styles */
+.lisp-btn {
+  padding: 4px 10px;
+  font-size: 0.85em;
+  font-family: inherit;
+  background: transparent;
+  color: inherit;
+  border: 1px solid currentColor;
+  cursor: pointer;
+  border-radius: 3px;
+  user-select: none;
+}
+
+.lisp-btn:hover {
+  background-color: rgba(128, 128, 128, 0.15);
+}
+
+.lisp-btn:active {
+  background-color: rgba(128, 128, 128, 0.3);
+}
+
+.lisp-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  #playground-editor {
+    width: 100% !important;
+  }
+  #playground-output {
+    width: 100% !important;
+  }
+}
+
+/* Syntax Highlighting for Lisp (Colorize output) */
+.lisp-code-block .string { color: #d14; }
+.lisp-code-block .comment { color: #998; font-style: italic; }
+.lisp-code-block .symbol { color: #008080; }
+.lisp-code-block .keyword { color: #000080; font-weight: bold; }
+.lisp-code-block .character { color: #099; }
+.lisp-code-block .special { color: #0086B3; }
+.lisp-code-block .paren1 { color: #aa0000; }
+.lisp-code-block .paren2 { color: #00aa00; }
+.lisp-code-block .paren3 { color: #0000aa; }
+.lisp-code-block .paren4 { color: #aaaa00; }
+.lisp-code-block .paren5 { color: #00aaaa; }
+.lisp-code-block .paren6 { color: #aa00aa; }
+
+/* In dark themes, these colors might need an override, but this provides a base */
+
