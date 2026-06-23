@@ -28,12 +28,21 @@
 
 (in-package :cl-bbs/views)
 
-;; Initialize colorize and HyperSpec lookup paths
+;; Initialize colorize and HyperSpec lookup paths safely
 (setf colorize:*debug* nil)
-(setf clhs-lookup::*hyperspec-pathname* 
-      (merge-pathnames "data/HyperSpec/" (asdf:system-source-directory :cl-bbs/server)))
-(setf clhs-lookup::*hyperspec-map-file* 
-      (merge-pathnames "Data/Map_Sym.txt" clhs-lookup::*hyperspec-pathname*))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (handler-case
+      (let* ((base-dir (asdf:system-source-directory :cl-bbs/server))
+             (local-clhs-dir (and base-dir (merge-pathnames "data/HyperSpec/" base-dir)))
+             (local-map-file (and local-clhs-dir (merge-pathnames "Data/Map_Sym.txt" local-clhs-dir))))
+        (if (and local-map-file (probe-file local-map-file))
+            (progn
+              (setf clhs-lookup::*hyperspec-pathname* local-clhs-dir)
+              (setf clhs-lookup::*hyperspec-map-file* local-map-file))
+            (setf clhs-lookup::*hyperspec-map-file* #p"nonexistent-map-sym.txt")))
+    (error (e)
+      (declare (ignore e))
+      (setf clhs-lookup::*hyperspec-map-file* #p"nonexistent-map-sym.txt"))))
 
 (defstruct preferences
   (theme "default")
