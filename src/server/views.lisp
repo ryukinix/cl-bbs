@@ -28,6 +28,13 @@
 
 (in-package :cl-bbs/views)
 
+;; Initialize colorize and HyperSpec lookup paths
+(setf colorize:*debug* nil)
+(setf clhs-lookup::*hyperspec-pathname* 
+      (merge-pathnames "data/HyperSpec/" (asdf:system-source-directory :cl-bbs/server)))
+(setf clhs-lookup::*hyperspec-map-file* 
+      (merge-pathnames "Data/Map_Sym.txt" clhs-lookup::*hyperspec-pathname*))
+
 (defstruct preferences
   (theme "default")
   (syntax-theme "simple")
