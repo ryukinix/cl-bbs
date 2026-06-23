@@ -43,15 +43,27 @@
 (list 1 2 3)
 ```"))
   ;; Executable Lisp code blocks
-  (is equal "<pre class=\"lisp-code-block\"><span class=\"\"><span class=\"paren1\">(<span class=\"\">format t <span class=\"string\">\"Hello\"</span></span>)</span></span></pre>"
+  (is equal (concatenate 'string
+                         "<pre class=\"lisp-code-block\">"
+                         "<span class=\"\"><span class=\"paren1\">"
+                         "(<span class=\"\">format t <span class=\"string\">\"Hello\"</span></span>)</span></span>"
+                         "</pre>")
       (cl-bbs/views::format-text "```lisp
 (format t \"Hello\")
 ```"))
-  (is equal "<pre class=\"lisp-code-block\"><span class=\"\"><span class=\"paren1\">(<span class=\"\">format t <span class=\"string\">\"Hello\"</span></span>)</span></span></pre>"
+  (is equal (concatenate 'string
+                         "<pre class=\"lisp-code-block\">"
+                         "<span class=\"\"><span class=\"paren1\">"
+                         "(<span class=\"\">format t <span class=\"string\">\"Hello\"</span></span>)</span></span>"
+                         "</pre>")
       (cl-bbs/views::format-text "```cl
 (format t \"Hello\")
 ```"))
-  (is equal "<pre class=\"lisp-code-block\"><span class=\"\"><span class=\"paren1\">(<span class=\"\">format t <span class=\"string\">\"Hello\"</span></span>)</span></span></pre>"
+  (is equal (concatenate 'string
+                         "<pre class=\"lisp-code-block\">"
+                         "<span class=\"\"><span class=\"paren1\">"
+                         "(<span class=\"\">format t <span class=\"string\">\"Hello\"</span></span>)</span></span>"
+                         "</pre>")
       (cl-bbs/views::format-text "```common-lisp
 (format t \"Hello\")
 ```")))

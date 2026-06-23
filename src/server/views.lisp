@@ -374,10 +374,11 @@ function validatePostForm(form, errorId) {
                               (raw-code (unescape-html escaped-code))
                               (colorized-code (handler-case (colorize:html-colorization :common-lisp raw-code)
                                                 (error () (cl-who:escape-string raw-code)))))
-                         ;; Note: colorize already wraps the result in <span class="..."><span class="paren1">...</span></span>
-                         ;; We wrap it in <pre class="lisp-code-block"> but keep a data-raw-code attribute or just use content for JS execution.
-                         ;; JSCL needs the raw text. To avoid JSCL trying to parse HTML, we'll embed the raw code in a hidden div,
-                         ;; or rely on JS `textContent` which extracts raw text from nested HTML elements. `textContent` works well.
+                         ;; Note: colorize already wraps the result in <span class="..."><span class="paren1">...
+                         ;; We wrap it in <pre class="lisp-code-block"> but keep a data-raw-code attribute
+                         ;; or just use content for JS execution. JSCL needs the raw text. To avoid JSCL trying
+                         ;; to parse HTML, we'll embed the raw code in a hidden div, or rely on JS `textContent`
+                         ;; which extracts raw text from nested HTML elements. `textContent` works well.
                          (format nil "</p><pre class=\"lisp-code-block\">~a</pre><p>" colorized-code))
                        (format nil "</p><pre>~a</pre><p>" content))))
                :simple-calls t))))
@@ -804,14 +805,16 @@ function updateThemePreview(themeValue) {
                                                                            "to delete this thread?');")))
                                       (unless (string-equal board "shame")
                                         (cl-who:htm
-                                         (:form :action "/admin/action" :method "POST" :style "display:inline; margin-left: 5px;"
+                                         (:form :action "/admin/action" :method "POST"
+                                                :style "display:inline; margin-left: 5px;"
                                                 (:input :type "hidden" :name "action" :value "shame-thread")
                                                 (:input :type "hidden" :name "board" :value board)
                                                 (:input :type "hidden" :name "thread" :value tid)
                                                 (:input :type "submit" :value "Shame" :class "shame-button"
                                                         :onclick (concatenate 'string
                                                                               "return confirm('Are you sure you want "
-                                                                              "to move this thread to the shame board?');")))))))))))))
+                                                                              "to move this thread to the shame "
+                                                                              "board?');")))))))))))))
              (cl-who:htm (:p "No threads found on this board.")))))
       (when (and board thread)
         (cl-who:htm
@@ -926,16 +929,20 @@ function updateThemePreview(themeValue) {
                              (:option :value "fib" "Fibonacci Numbers")
                              (:option :value "loop" "Loop Macro")
                              (:option :value "clos" "Common Lisp Object System (CLOS)")))
-              (:div :id "example-data-hello" :style "display:none;" (cl-who:str (colorize:html-colorization :common-lisp "(format t \"Hello, World!~%\")")))
-              (:div :id "example-data-fib" :style "display:none;" (cl-who:str (colorize:html-colorization :common-lisp "(defun fib (n)
+              (:div :id "example-data-hello" :style "display:none;"
+                    (cl-who:str (colorize:html-colorization :common-lisp "(format t \"Hello, World!~%\")")))
+              (:div :id "example-data-fib" :style "display:none;"
+                    (cl-who:str (colorize:html-colorization :common-lisp "(defun fib (n)
   (if (< n 2)
       n
       (+ (fib (- n 1)) (fib (- n 2)))))
 
 (format t \"Fibonacci of 10 is: ~a~%\" (fib 10))")))
-              (:div :id "example-data-loop" :style "display:none;" (cl-who:str (colorize:html-colorization :common-lisp "(loop for x from 1 to 5
+              (:div :id "example-data-loop" :style "display:none;"
+                    (cl-who:str (colorize:html-colorization :common-lisp "(loop for x from 1 to 5
       do (format t \"Square of ~d is ~d~%\" x (* x x)))")))
-              (:div :id "example-data-clos" :style "display:none;" (cl-who:str (colorize:html-colorization :common-lisp "(defclass person ()
+              (:div :id "example-data-clos" :style "display:none;"
+                    (cl-who:str (colorize:html-colorization :common-lisp "(defclass person ()
   ((name :accessor person-name :initarg :name)
    (age :accessor person-age :initarg :age)))
 
@@ -950,14 +957,28 @@ function updateThemePreview(themeValue) {
                     :class "lisp-code-block"
                     :contenteditable "true"
                     :spellcheck "false"
-                    :style "min-height: 200px; width: 96%; max-width: 800px; font-family: monospace; font-size: 1.1em; padding: 10px; border: 1px solid currentColor; background: transparent; color: inherit; margin-bottom: 1em; outline: none; overflow: auto; white-space: pre-wrap;"
+                    :style (concatenate 'string
+                                        "min-height: 200px; width: 96%; max-width: 800px; "
+                                        "font-family: monospace; font-size: 1.1em; padding: 10px; "
+                                        "border: 1px solid currentColor; background: transparent; "
+                                        "color: inherit; margin-bottom: 1em; outline: none; "
+                                        "overflow: auto; white-space: pre-wrap;")
                     "")
               (:div :style "display: flex; gap: 10px; margin-bottom: 1em;"
-                    (:button :id "playground-run" :style "padding: 6px 15px; font-size: 1em; cursor: pointer; font-weight: bold;" "Run Code")
-                    (:button :id "playground-clear" :style "padding: 6px 15px; font-size: 1em; cursor: pointer;" "Clear Output"))
+                    (:button :id "playground-run"
+                             :style "padding: 6px 15px; font-size: 1em; cursor: pointer; font-weight: bold;"
+                             "Run Code")
+                    (:button :id "playground-clear"
+                             :style "padding: 6px 15px; font-size: 1em; cursor: pointer;"
+                             "Clear Output"))
               (:h3 "Output Console")
               (:pre :id "playground-output"
-                    :style "display: none; padding: 10px; width: 96%; max-width: 800px; border: 1px dashed currentColor; background-color: rgba(128, 128, 128, 0.05); white-space: pre-wrap; word-break: break-all; font-family: monospace; font-size: 1.1em; line-height: 1.4em;"
+                    :style (concatenate 'string
+                                        "display: none; padding: 10px; width: 96%; max-width: 800px; "
+                                        "border: 1px dashed currentColor; "
+                                        "background-color: rgba(128, 128, 128, 0.05); white-space: pre-wrap; "
+                                        "word-break: break-all; font-family: monospace; font-size: 1.1em; "
+                                        "line-height: 1.4em;")
                     ""))
         (:hr)
         (cl-who:str (render-footer-html))))))
