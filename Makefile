@@ -51,8 +51,15 @@ publish: docker-build
 	docker tag $(DOCKER_IMG) $(PUBLIC_IMG)
 	docker push $(PUBLIC_IMG)
 
+publish-qa: docker-build
+	docker tag $(DOCKER_IMG) ryukinix/$(DOCKER_IMG):qa
+	docker push ryukinix/$(DOCKER_IMG):qa
+
 deploy: publish
 	ssh starfox -t deploy apply cl-bbs
+
+deploy-qa: publish-qa
+	ssh starfox -t deploy apply cl-bbs-qa
 
 deploy-remote:
 	ssh starfox -t "cd Desktop/workspace/cl-bbs && git fetch && git reset --hard origin/$(shell git rev-parse --abbrev-ref HEAD) && make deploy"
