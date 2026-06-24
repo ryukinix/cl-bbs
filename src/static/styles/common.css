@@ -184,3 +184,41 @@ body.moderation .comment-preview {
   background-color: #fafafa;
   border-left: 3px solid #ccc;
 }
+
+/* Lisp Interactive Snippets & Playground Styles */
+.lisp-btn {
+  padding: 4px 10px;
+  font-size: 0.85em;
+  font-family: inherit;
+  background: transparent;
+  color: inherit;
+  border: 1px solid currentColor;
+  cursor: pointer;
+  border-radius: 3px;
+  user-select: none;
+}
+
+.lisp-btn:hover {
+  background-color: rgba(128, 128, 128, 0.15);
+}
+
+.lisp-btn:active {
+  background-color: rgba(128, 128, 128, 0.3);
+}
+
+.lisp-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  #playground-editor {
+    width: 100% !important;
+  }
+  #playground-output {
+    width: 100% !important;
+  }
+}
+
+/* Syntax highlighting is now handled via separate syntax theme CSS files */
+

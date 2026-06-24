@@ -8,15 +8,15 @@ body {
   font-family: "Courier New", Courier, monospace;
   font-size: 100%;
   animation: pulse-glow 4s infinite alternate;
-  text-shadow: 0 0 5px #00ff41;
+  text-shadow: 0 0 3px #00ff41;
 }
 
 @keyframes pulse-glow {
   0% {
-    text-shadow: 0 0 2px #00ff41, 0 0 5px #00ff41;
+    text-shadow: 0 0 1px #00ff41, 0 0 3px #00ff41;
   }
   100% {
-    text-shadow: 0 0 4px #00ff41, 0 0 8px #008f11, 0 0 15px #003b00;
+    text-shadow: 0 0 2px #00ff41, 0 0 4px #008f11, 0 0 8px #003b00;
   }
 }
 
@@ -27,7 +27,7 @@ h1 {
   font-size: 2em;
   font-weight: bold;
   color: #d1ffdf;
-  text-shadow: 0 0 10px #00ff41, 0 0 20px #00ff41;
+  text-shadow: 0 0 5px #00ff41, 0 0 10px #00ff41;
   animation: glitch 1.5s ease-in-out infinite alternate;
 }
 
@@ -49,7 +49,7 @@ h2 {
   overflow-wrap: break-word;
   word-wrap: break-word;
   color: #a4ffbd;
-  text-shadow: 0 0 8px #00ff41;
+  text-shadow: 0 0 4px #00ff41;
 }
 
 /* Links */
@@ -83,12 +83,12 @@ div.newthread-form {
   padding: 1em;
   margin: 1em 2%;
   background-color: rgba(0, 59, 0, 0.2);
-  box-shadow: inset 0 0 10px #003b00;
+  box-shadow: inset 0 0 5px #003b00;
   transition: all 0.3s ease;
 }
 
 div.newthread-form:hover {
-  box-shadow: inset 0 0 20px #008f11;
+  box-shadow: inset 0 0 10px #008f11;
   border-color: #00ff41;
 }
 
@@ -121,7 +121,7 @@ pre.jump a {
 }
 
 pre.jump a:hover {
-  text-shadow: 0 0 15px #00ff41;
+  text-shadow: 0 0 8px #00ff41;
 }
 
 a, a:visited, a:active {
@@ -132,7 +132,7 @@ a, a:visited, a:active {
 }
 a:hover {
   color: #ffffff;
-  text-shadow: 0 0 10px #00ff41, 0 0 20px #00ff41;
+  text-shadow: 0 0 5px #00ff41, 0 0 10px #00ff41;
   text-decoration: underline dashed #00ff41;
 }
 a:target {
@@ -197,6 +197,7 @@ dd p {
 dd pre, dd code {
   font-size: 1em;
   font-family: monospace;
+  text-shadow: none !important;
 }
 
 dd pre {
@@ -231,7 +232,7 @@ del {
 del:active, del:hover {
   background-color: transparent;
   color: #00ff41;
-  text-shadow: 0 0 5px #00ff41;
+  text-shadow: 0 0 3px #00ff41;
 }
 
 /* thread list */
@@ -284,7 +285,7 @@ textarea, input[type=text] {
 textarea:focus, input[type=text]:focus {
     outline: none;
     border-color: #00ff41;
-    box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+    box-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
 }
 
 input[type=submit], button {
@@ -299,13 +300,13 @@ input[type=submit], button {
   cursor: pointer;
   text-transform: uppercase;
   transition: all 0.2s;
-  box-shadow: 0 0 5px #008f11;
+  box-shadow: 0 0 3px #008f11;
 }
 
 input[type=submit]:hover, button:hover {
   background-color: #00ff41;
   color: black;
-  box-shadow: 0 0 15px #00ff41;
+  box-shadow: 0 0 8px #00ff41;
 }
 
 input[type=submit]:active, button:active {
@@ -346,7 +347,7 @@ select {
 select:focus {
    outline: none;
    border-color: #00ff41;
-   box-shadow: 0 0 10px rgba(0, 255, 65, 0.4);
+   box-shadow: 0 0 5px rgba(0, 255, 65, 0.4);
 }
 
 
@@ -386,31 +387,32 @@ p.footer {
   background-color: #0d0d0d;
   color: #00ff41;
   border-left: 5px solid #00ff41;
-  box-shadow: 0 0 10px #003b00;
+  box-shadow: 0 0 5px #003b00;
   font-family: inherit;
 }
 
 .error-container .error-title {
   color: #ff3333;
-  text-shadow: 0 0 5px #ff3333;
+  text-shadow: 0 0 3px #ff3333;
 }
 
 .error-back-button {
   background-color: black;
   color: #00ff41;
   border: 1px solid #00ff41;
-  box-shadow: 0 0 5px #008f11;
+  box-shadow: 0 0 3px #008f11;
 }
 
 .error-back-button:hover {
   background-color: #00ff41;
   color: black;
-  box-shadow: 0 0 15px #00ff41;
+  box-shadow: 0 0 8px #00ff41;
 }
 
 /* Matrix Moderation Panel styling overrides */
 body.moderation .comment-preview {
   background-color: rgba(0, 59, 0, 0.2);
   border-left: 3px solid #008f11;
-  box-shadow: inset 0 0 5px #003b00;
+  box-shadow: inset 0 0 3px #003b00;
 }
+\n.lisp-code-block {\n  text-shadow: none !important;\n}

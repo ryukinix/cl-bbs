@@ -20,16 +20,16 @@ install-deps:
 server:
 	./roswell/cl-bbs-server.ros
 
-docker-build: dockerbuild
+cache-dependencies:
+	qlot install
 
-dockerbuild:
+docker-build:
 	docker build --build-arg APP_VERSION=$(APP_VERSION) --build-arg APP_COMMIT_HASH=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown") -t $(DOCKER_IMG) .
 
 docker-shell: docker-build
 	docker run --rm -it --entrypoint=/bin/bash $(DOCKER_IMG)
 
 docker-run: docker-build
-	# Note: default SchemeBBS port is 8222.
 	docker run --rm -it -p 8222:8222 -v $(PWD)/data:/cl-bbs/data $(DOCKER_IMG)
 
 .PHONY: check check-unit check-integration docker-check docker-build docker-lint lint lint-fix publish

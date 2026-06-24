@@ -60,7 +60,8 @@
                "lack"
                "lack-middleware-static"
                "lack-middleware-accesslog"
-               "bordeaux-threads")
+               "bordeaux-threads"
+               "colorize")
   :pathname "src"
   :components ((:file "package")
                (:module "server"

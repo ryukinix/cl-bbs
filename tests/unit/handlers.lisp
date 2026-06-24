@@ -126,7 +126,8 @@
       (true (some (lambda (file)
                        (let ((name (pathname-name file)))
                          (handler-case (and (parse-integer name)
-                                            (string= (cdr (assoc 'cl-bbs/models:headline (cl-bbs/storage:read-sexp-file file)))
+                                            (string= (cdr (assoc 'cl-bbs/models:headline
+                                                                 (cl-bbs/storage:read-sexp-file file)))
                                                      "Shame Test Thread"))
                            (error () nil))))
                      files))

@@ -13,7 +13,8 @@
                 #:render-preferences
                 #:render-error-page
                 #:render-thread
-                #:render-search-results)
+                #:render-search-results
+                #:render-playground)
   (:export #:handle-request))
 
 (in-package :cl-bbs/handlers)
@@ -62,6 +63,14 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                (cookies (parse-cookies cookie-str))
                (cookie-theme (sanitize-theme-name (cdr (assoc "theme" cookies :test #'string=)))))
           (or cookie-theme "default")))))
+
+(defun get-syntax-theme-from-env (env)
+  "Retrieves the active syntax theme name from the request cookies."
+  (let* ((headers (getf env :headers))
+         (cookie-str (and headers (gethash "cookie" headers)))
+         (cookies (parse-cookies cookie-str))
+         (cookie-theme (sanitize-theme-name (cdr (assoc "syntax_theme" cookies :test #'string=)))))
+    (or cookie-theme "simple")))
 
 (defun get-search-hide-input-from-env (env)
   "Retrieves the setting for hiding search input in board view (returns \"yes\" or \"no\", default \"no\")."
@@ -431,6 +440,7 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
             (intern (string-upcase (symbol-name (getf normalized-env :request-method))) :keyword)))
     (let ((cl-bbs/views:*preferences* (cl-bbs/views:make-preferences
                                        :theme (get-theme-from-env normalized-env)
+                                       :syntax-theme (get-syntax-theme-from-env normalized-env)
                                        :default-board (or (get-default-board-from-env normalized-env) "")
                                        :search-hide-input (get-search-hide-input-from-env normalized-env)
                                        :search-local-only (get-search-local-only-from-env normalized-env)
@@ -599,6 +609,32 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
           `(200 (:content-type "text/html; charset=utf-8")
                 (,(render-search-results (or query "") results cl-bbs/views:*preferences*))))))
 
+;; 6b-api. POST /api/colorize
+(setf (ningle:route *app* "/api/colorize" :method :POST)
+      (lambda (params)
+        (let* ((env (lack.request:request-env ningle:*request*))
+               (parsed-params (get-body-params params env))
+               (code (cdr (assoc "code" parsed-params :test #'string=))))
+          (if code
+              `(200 (:content-type "text/html; charset=utf-8")
+                    (,(handler-case (colorize:html-colorization :common-lisp code)
+                        (error () (cl-who:escape-string code)))))
+              `(400 (:content-type "text/plain") ("No code provided"))))))
+
+;; 6c. GET /playground (Global Playground)
+(setf (ningle:route *app* "/playground" :method :GET)
+      (lambda (params)
+        (declare (ignore params))
+        `(200 (:content-type "text/html; charset=utf-8")
+              (,(render-playground nil)))))
+
+;; 6d. GET /:board/playground (Board-scoped Playground)
+(setf (ningle:route *app* "/:board/playground" :method :GET)
+      (lambda (params)
+        (let ((board (cdr (assoc :board params))))
+          `(200 (:content-type "text/html; charset=utf-8")
+                (,(render-playground board))))))
+
 ;; 7. GET /:board/list
 (setf (ningle:route *app* "/:board/list" :method :GET)
       (lambda (params)
@@ -625,6 +661,7 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                (parsed-params (get-body-params params env))
                (board (cdr (assoc :board params)))
                (theme (cdr (assoc "theme" parsed-params :test #'string=)))
+               (syntax-theme (cdr (assoc "syntax_theme" parsed-params :test #'string=)))
                (default-board (let ((val (cdr (assoc "default_board" parsed-params :test #'string=))))
                                 (if val (string-trim '(#\Space #\Tab #\Newline #\Return) val) "")))
                (search-hide-input (let ((val (cdr (assoc "search_hide_input" parsed-params :test #'string=))))
@@ -635,6 +672,7 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                                   (if (member val '("top" "bottom") :test #'string=) val "top"))))
           `(303 (:location ,(format nil "/~a/preferences" board)
                  :set-cookie ,(format nil "theme=~a; Path=/; Max-Age=31536000" (or theme "default"))
+                 :set-cookie ,(format nil "syntax_theme=~a; Path=/; Max-Age=31536000" (or syntax-theme "simple"))
                  :set-cookie ,(format nil "default_board=~a; Path=/; Max-Age=31536000" (or default-board ""))
                  :set-cookie ,(format nil "search_hide_input=~a; Path=/; Max-Age=31536000" search-hide-input)
                  :set-cookie ,(format nil "search_local_only=~a; Path=/; Max-Age=31536000" search-local-only)
