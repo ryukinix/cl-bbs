@@ -334,13 +334,13 @@ function validatePostForm(form, errorId) {
            :simple-calls t))
     (setf processed
           (cl-ppcre:regex-replace-all
-           "https?://[\\w\\-\\.\\/\\?\\=\\&\\%#\\+]+"
+           "https?://[\\w\\-\\.\\/\\?\\=\\&\\%#\\+:\\;]+"
            processed
            "<a href=\"\\&\" target=\"_blank\">\\&</a>"))
     (setf processed
           (cl-ppcre:regex-replace-all
            (concatenate 'string
-                        "<a href=\"(https?://[\\w\\-\\.\\/\\?\\=\\&\\%#\\+]+"
+                        "<a href=\"(https?://[\\w\\-\\.\\/\\?\\=\\&\\%#\\+:\\;]+"
                         "\\.(?:png|jpg|jpeg|gif|webp|bmp))\" "
                         "target=\"_blank\">.*?</a>")
            processed
@@ -351,7 +351,7 @@ function validatePostForm(form, errorId) {
                         "alt=\"preview\" /></a><br />")))
     (setf processed
           (cl-ppcre:regex-replace-all
-           "image\\+<a href=\"(https?://[\\w\\-\\.\\/\\?\\=\\&\\%#\\+]+)\" target=\"_blank\">.*?</a>"
+           "image\\+<a href=\"(https?://[\\w\\-\\.\\/\\?\\=\\&\\%#\\+:\\;]+)\" target=\"_blank\">.*?</a>"
            processed
            (concatenate 'string
                         "<br /><a href=\"\\1\" target=\"_blank\">"
