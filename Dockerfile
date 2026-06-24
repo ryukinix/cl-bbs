@@ -2,7 +2,7 @@ FROM commonlispbr/roswell:latest
 RUN apt update && apt install libev4 wget file make -y
 WORKDIR /cl-bbs
 RUN ln -s /cl-bbs /root/.roswell/local-projects/cl-bbs
-COPY ./.qlot .qlot
+COPY ./.qlot* .
 COPY ./cl-bbs.asd cl-bbs.asd
 COPY ./src src
 COPY ./tests tests
