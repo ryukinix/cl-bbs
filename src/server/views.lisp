@@ -29,8 +29,8 @@
 (in-package :cl-bbs/views)
 
 ;; Initialize colorize and HyperSpec lookup paths safely
-(setf colorize:*debug* nil)
 (eval-when (:execute)
+  (setf colorize:*debug* nil)
   (handler-case
       (let* ((base-dir (asdf:system-source-directory :cl-bbs/server))
              (local-clhs-dir (and base-dir (merge-pathnames "data/HyperSpec/" base-dir)))

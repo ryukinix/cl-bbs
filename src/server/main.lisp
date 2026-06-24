@@ -3,6 +3,23 @@
 (defvar *server* nil)
 (defvar *app* nil)
 
+;; Initialize colorize and HyperSpec lookup paths safely
+(defun init-colorize ()
+  (setf colorize:*debug* nil)
+  (handler-case
+      (let* ((base-dir (asdf:system-source-directory :cl-bbs/server))
+             (local-clhs-dir (and base-dir (merge-pathnames "data/HyperSpec/" base-dir)))
+             (local-map-file (and local-clhs-dir (merge-pathnames "Data/Map_Sym.txt" local-clhs-dir))))
+        (if (and local-map-file (probe-file local-map-file))
+            (progn
+              (setf clhs-lookup::*hyperspec-pathname* local-clhs-dir)
+              (setf clhs-lookup::*hyperspec-map-file* local-map-file))
+            (setf clhs-lookup::*hyperspec-map-file* #p"nonexistent-map-sym.txt")))
+    (error (e)
+      (declare (ignore e))
+      (setf clhs-lookup::*hyperspec-map-file* #p"nonexistent-map-sym.txt"))))
+
+
 (defun make-real-ip-middleware (app)
   (lambda (env)
     (let ((x-forwarded-for (gethash "x-forwarded-for" (getf env :headers))))
@@ -23,6 +40,7 @@
 
 (defun start-app (host port &key (async t))
   "Starts the Hunchentoot server running the cl-bbs application on the specified PORT."
+  (init-colorize)
   (when *server*
     (stop-app))
   (setf *app* (build-app))
