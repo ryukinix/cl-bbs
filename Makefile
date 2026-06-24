@@ -20,9 +20,10 @@ install-deps:
 server:
 	./roswell/cl-bbs-server.ros
 
-docker-build: dockerbuild
+cache-dependencies:
+	qlot install
 
-dockerbuild:
+docker-build:
 	docker build --build-arg APP_VERSION=$(APP_VERSION) --build-arg APP_COMMIT_HASH=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown") -t $(DOCKER_IMG) .
 
 docker-shell: docker-build
