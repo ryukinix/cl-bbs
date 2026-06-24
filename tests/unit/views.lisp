@@ -66,4 +66,13 @@
                          "</pre>")
       (cl-bbs/views::format-text "```common-lisp
 (format t \"Hello\")
-```")))
+```"))
+  ;; Issue #17 URL tests (colons and semicolons in URL)
+  (is equal (concatenate 'string
+                         "<p>Check <a href=\"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQL--f01xIZCRt7R0w6xxdR5v76IRrZImu6OCETYL01n0J0fx4cFud3Y4gY&amp;s=10\" target=\"_blank\">"
+                         "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQL--f01xIZCRt7R0w6xxdR5v76IRrZImu6OCETYL01n0J0fx4cFud3Y4gY&amp;s=10</a></p>")
+      (cl-bbs/views::format-text "Check https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQL--f01xIZCRt7R0w6xxdR5v76IRrZImu6OCETYL01n0J0fx4cFud3Y4gY&s=10"))
+  (is equal (concatenate 'string
+                         "<p>Check <a href=\"https://www.reddit.com/r/Common_Lisp/comments/1pqghsx/comment/nuvmq9z/?utm_source=share&amp;;utm_medium=mweb3x&amp;utm_name=mweb3xcss&amp;utm_term=2&amp;utm_content=share_button\" target=\"_blank\">"
+                         "https://www.reddit.com/r/Common_Lisp/comments/1pqghsx/comment/nuvmq9z/?utm_source=share&amp;;utm_medium=mweb3x&amp;utm_name=mweb3xcss&amp;utm_term=2&amp;utm_content=share_button</a></p>")
+      (cl-bbs/views::format-text "Check https://www.reddit.com/r/Common_Lisp/comments/1pqghsx/comment/nuvmq9z/?utm_source=share&;utm_medium=mweb3x&utm_name=mweb3xcss&utm_term=2&utm_content=share_button")))
