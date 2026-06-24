@@ -28,22 +28,6 @@
 
 (in-package :cl-bbs/views)
 
-;; Initialize colorize and HyperSpec lookup paths safely
-(eval-when (:execute)
-  (setf colorize:*debug* nil)
-  (handler-case
-      (let* ((base-dir (asdf:system-source-directory :cl-bbs/server))
-             (local-clhs-dir (and base-dir (merge-pathnames "data/HyperSpec/" base-dir)))
-             (local-map-file (and local-clhs-dir (merge-pathnames "Data/Map_Sym.txt" local-clhs-dir))))
-        (if (and local-map-file (probe-file local-map-file))
-            (progn
-              (setf clhs-lookup::*hyperspec-pathname* local-clhs-dir)
-              (setf clhs-lookup::*hyperspec-map-file* local-map-file))
-            (setf clhs-lookup::*hyperspec-map-file* #p"nonexistent-map-sym.txt")))
-    (error (e)
-      (declare (ignore e))
-      (setf clhs-lookup::*hyperspec-map-file* #p"nonexistent-map-sym.txt"))))
-
 (defstruct preferences
   (theme "default")
   (syntax-theme "simple")
@@ -763,44 +747,43 @@ function updateThemePreview(themeValue) {
 
 (defun render-moderation (boards &optional board threads thread comments (prefs *preferences*) headline)
   "Renders the admin/moderation control panel HTML page showing BOARDS and allowing deletions/edits."
-  (let ((theme (preferences-theme prefs)))
-    (layout "cl-bbs Moderation Panel" "moderation" prefs
-      (cl-who:with-html-output-to-string (s nil :indent t)
-        (:h1 "Moderation Panel")
-        (:p (:a :href "/" "Back to Home"))
-        (:hr)
-        (:h2 "Boards")
-        (:ul
-         (dolist (b boards)
-           (cl-who:htm
-            (:li (:strong (:a :href (format nil "/admin?board=~a" b) (cl-who:esc b)))
-                 " &nbsp; "
-                 (:form :action "/admin/action" :method "POST" :style "display:inline;"
-                        (:input :type "hidden" :name "action" :value "delete-board")
-                        (:input :type "hidden" :name "board" :value b)
-                        (:input :type "submit" :value "Delete Board" :class "delete-button"
-                                :onclick (concatenate 'string
-                                                      "return confirm('Are you sure you want to "
-                                                      "delete the ENTIRE board? "
-                                                      "This cannot be undone.');")))))))
-        (:h2 "Create Board")
-        (:p "Enter a board name below to create a new board. Board names must be in "
-            (:strong "kebab-case")
-            " (only lowercase letters, numbers, and hyphens; no spaces or underlines).")
-        (:div :style "margin: 1em 0;"
-              (:form :action "/admin/action" :method "POST" :onsubmit "return validateCreateBoard()"
-                     (:input :type "hidden" :name "action" :value "create-board")
-                     (:input :type "text" :name "board" :id "new-board-name" :placeholder "board-name"
-                             :style "padding: 6px; font-size: 1em; border: 1px solid #bababa;
+  (layout "cl-bbs Moderation Panel" "moderation" prefs
+          (cl-who:with-html-output-to-string (s nil :indent t)
+            (:h1 "Moderation Panel")
+            (:p (:a :href "/" "Back to Home"))
+            (:hr)
+            (:h2 "Boards")
+            (:ul
+             (dolist (b boards)
+               (cl-who:htm
+                (:li (:strong (:a :href (format nil "/admin?board=~a" b) (cl-who:esc b)))
+                     " &nbsp; "
+                     (:form :action "/admin/action" :method "POST" :style "display:inline;"
+                            (:input :type "hidden" :name "action" :value "delete-board")
+                            (:input :type "hidden" :name "board" :value b)
+                            (:input :type "submit" :value "Delete Board" :class "delete-button"
+                                    :onclick (concatenate 'string
+                                                          "return confirm('Are you sure you want to "
+                                                          "delete the ENTIRE board? "
+                                                          "This cannot be undone.');")))))))
+            (:h2 "Create Board")
+            (:p "Enter a board name below to create a new board. Board names must be in "
+                (:strong "kebab-case")
+                " (only lowercase letters, numbers, and hyphens; no spaces or underlines).")
+            (:div :style "margin: 1em 0;"
+                  (:form :action "/admin/action" :method "POST" :onsubmit "return validateCreateBoard()"
+                         (:input :type "hidden" :name "action" :value "create-board")
+                         (:input :type "text" :name "board" :id "new-board-name" :placeholder "board-name"
+                                 :style "padding: 6px; font-size: 1em; border: 1px solid #bababa;
                                      border-radius: 4px; font-family: monospace;")
-                     " "
-                     (:input :type "submit" :value "Create Board"
-                             :style "padding: 6px 12px; font-size: 1em; background-color: #ededed;
+                         " "
+                         (:input :type "submit" :value "Create Board"
+                                 :style "padding: 6px 12px; font-size: 1em; background-color: #ededed;
                                      border: 1px solid #b5b5b5; border-radius: 4px; cursor: pointer;
                                      font-weight: bold;"))
-              (:p :id "board-error" :style "color: red; font-size: 0.9em; margin: 0.5em 0; display: none;"))
-        (:script :type "text/javascript"
-                 "function validateCreateBoard() {
+                  (:p :id "board-error" :style "color: red; font-size: 0.9em; margin: 0.5em 0; display: none;"))
+            (:script :type "text/javascript"
+                     "function validateCreateBoard() {
         const input = document.getElementById('new-board-name');
         const error = document.getElementById('board-error');
         const boardName = input.value.trim();
@@ -825,84 +808,88 @@ function updateThemePreview(themeValue) {
   error.style.display = 'none';
   return true;
 }")
-        (when board
-          (cl-who:htm
-           (:hr)
-           (:h2 (cl-who:fmt "Threads in /~a/" board))
-           (if threads
-               (cl-who:htm
-                (:table :border 1 :cellpadding 5
-                        (:thead (:tr (:th "ID") (:th "Headline") (:th "Date") (:th "Actions")))
-                      (:tbody
-                       (dolist (t-data threads)
-                         (let* ((tid (car t-data))
-                                (props (cdr t-data))
-                                (headline (cdr (assoc 'cl-bbs/models:headline props))))
-                           (cl-who:htm
-                            (:tr (:td (cl-who:str (format nil "~a" tid)))
-                                 (:td (:a :href (format nil "/admin?board=~a&thread=~a" board tid)
-                                          (cl-who:esc headline)))
-                                 (:td (cl-who:str (format nil "~a" (cdr (assoc 'cl-bbs/models:date props)))))
-                                 (:td (:form :action "/admin/action" :method "POST" :style "display:inline;"
-                                             (:input :type "hidden" :name "action" :value "delete-thread")
-                                             (:input :type "hidden" :name "board" :value board)
-                                             (:input :type "hidden" :name "thread" :value tid)
-                                             (:input :type "submit" :value "Delete Thread" :class "delete-button"
-                                                     :onclick (concatenate 'string
-                                                                           "return confirm('Are you sure you want "
-                                                                           "to delete this thread?');")))
-                                      (unless (string-equal board "shame")
-                                        (cl-who:htm
-                                         (:form :action "/admin/action" :method "POST"
-                                                :style "display:inline; margin-left: 5px;"
-                                                (:input :type "hidden" :name "action" :value "shame-thread")
-                                                (:input :type "hidden" :name "board" :value board)
-                                                (:input :type "hidden" :name "thread" :value tid)
-                                                (:input :type "submit" :value "Shame" :class "shame-button"
-                                                        :onclick (concatenate 'string
-                                                                              "return confirm('Are you sure you want "
-                                                                              "to move this thread to the shame "
-                                                                              "board?');")))))))))))))
-             (cl-who:htm (:p "No threads found on this board.")))))
-      (when (and board thread)
-        (cl-who:htm
-         (:hr)
-         (:h2 (cl-who:fmt "Comments in Thread #~a (~a)" thread board))
-         (if comments
-             (cl-who:htm
-              (:dl
-               (dolist (p comments)
-                 (let* ((pid (car p))
-                        (pdata (cdr p))
-                        (content (cdr (assoc 'cl-bbs/models:content pdata)))
-                        (date (cdr (assoc 'cl-bbs/models:date pdata))))
+            (when board
+              (cl-who:htm
+               (:hr)
+               (:h2 (cl-who:fmt "Threads in /~a/" board))
+               (if threads
                    (cl-who:htm
-                    (:dt "No." (cl-who:str (format nil "~a" pid)) " " (:samp (cl-who:esc date))
-                         " &nbsp; "
-                         (:form :action "/admin/action" :method "POST" :style "display:inline;"
-                                (:input :type "hidden" :name "action" :value "delete-comment")
-                                (:input :type "hidden" :name "board" :value board)
-                                (:input :type "hidden" :name "thread" :value thread)
-                                (:input :type "hidden" :name "comment" :value pid)
-                                (:input :type "submit" :value "Delete Comment" :class "delete-button"
-                                        :onclick "return confirm('Are you sure you want to delete this comment?');")))
-                    (:dd
-                     (:div :class "comment-preview"
-                           (cl-who:str (format-text content thread)))
-                     (:form :action "/admin/action" :method "POST" :style "margin-top: 0.5em;"
-                            (:input :type "hidden" :name "action" :value "edit-comment")
-                            (:input :type "hidden" :name "board" :value board)
-                            (:input :type "hidden" :name "thread" :value thread)
-                            (:input :type "hidden" :name "comment" :value pid)
-                            (when (and (= pid 1) headline)
-                              (cl-who:htm
-                               (:p (:label :for "headline" "Thread Headline: ")
-                                   (:br)
-                                   (:input :type "text" :name "headline" :id "headline" :size 60 :value headline))))
-                            (:textarea :name "content" :rows 3 :cols 60 (cl-who:str content))
-                            (:br)
-                            (:input :type "submit" :value "Save Changes"))))))))
-             (cl-who:htm (:p "No comments found.")))))))))
+                    (:table :border 1 :cellpadding 5
+                            (:thead (:tr (:th "ID") (:th "Headline") (:th "Date") (:th "Actions")))
+                            (:tbody
+                             (dolist (t-data threads)
+                               (let* ((tid (car t-data))
+                                      (props (cdr t-data))
+                                      (headline (cdr (assoc 'cl-bbs/models:headline props))))
+                                 (cl-who:htm
+                                  (:tr (:td (cl-who:str (format nil "~a" tid)))
+                                       (:td (:a :href (format nil "/admin?board=~a&thread=~a" board tid)
+                                                (cl-who:esc headline)))
+                                       (:td (cl-who:str (format nil "~a" (cdr (assoc 'cl-bbs/models:date props)))))
+                                       (:td (:form :action "/admin/action" :method "POST" :style "display:inline;"
+                                                   (:input :type "hidden" :name "action" :value "delete-thread")
+                                                   (:input :type "hidden" :name "board" :value board)
+                                                   (:input :type "hidden" :name "thread" :value tid)
+                                                   (:input :type "submit" :value "Delete Thread" :class "delete-button"
+                                                           :onclick
+                                                           (concatenate 'string
+                                                                        "return confirm('Are you sure you want "
+                                                                        "to delete this thread?');")))
+                                            (unless (string-equal board "shame")
+                                              (cl-who:htm
+                                               (:form :action "/admin/action" :method "POST"
+                                                      :style "display:inline; margin-left: 5px;"
+                                                      (:input :type "hidden" :name "action" :value "shame-thread")
+                                                      (:input :type "hidden" :name "board" :value board)
+                                                      (:input :type "hidden" :name "thread" :value tid)
+                                                      (:input :type "submit" :value "Shame" :class "shame-button"
+                                                              :onclick
+                                                              (concatenate 'string
+                                                                           "return confirm('Are you sure you want "
+                                                                           "to move this thread to the shame "
+                                                                           "board?');")))))))))))))
+                   (cl-who:htm (:p "No threads found on this board.")))))
+            (when (and board thread)
+              (cl-who:htm
+               (:hr)
+               (:h2 (cl-who:fmt "Comments in Thread #~a (~a)" thread board))
+               (if comments
+                   (cl-who:htm
+                    (:dl
+                     (dolist (p comments)
+                       (let* ((pid (car p))
+                              (pdata (cdr p))
+                              (content (cdr (assoc 'cl-bbs/models:content pdata)))
+                              (date (cdr (assoc 'cl-bbs/models:date pdata))))
+                         (cl-who:htm
+                          (:dt "No." (cl-who:str (format nil "~a" pid)) " " (:samp (cl-who:esc date))
+                               " &nbsp; "
+                               (:form :action "/admin/action" :method "POST" :style "display:inline;"
+                                      (:input :type "hidden" :name "action" :value "delete-comment")
+                                      (:input :type "hidden" :name "board" :value board)
+                                      (:input :type "hidden" :name "thread" :value thread)
+                                      (:input :type "hidden" :name "comment" :value pid)
+                                      (:input :type "submit" :value "Delete Comment" :class "delete-button"
+                                              :onclick
+                                              "return confirm('Are you sure you want to delete this comment?');")))
+                          (:dd
+                           (:div :class "comment-preview"
+                                 (cl-who:str (format-text content thread)))
+                           (:form :action "/admin/action" :method "POST" :style "margin-top: 0.5em;"
+                                  (:input :type "hidden" :name "action" :value "edit-comment")
+                                  (:input :type "hidden" :name "board" :value board)
+                                  (:input :type "hidden" :name "thread" :value thread)
+                                  (:input :type "hidden" :name "comment" :value pid)
+                                  (when (and (= pid 1) headline)
+                                    (cl-who:htm
+                                     (:p (:label :for "headline" "Thread Headline: ")
+                                         (:br)
+                                         (:input :type "text" :name "headline" :id "headline"
+                                                 :size 60 :value headline))))
+                                  (:textarea :name "content" :rows 3 :cols 60 (cl-who:str content))
+                                  (:br)
+                                  (:input :type "submit" :value "Save Changes"))))))))
+                   (cl-who:htm (:p "No comments found."))))))))
 
 (defun render-search-results (query results &optional (prefs *preferences*))
   "Renders the search results page HTML, showing matching posts for the given QUERY, using layout PREFS."
@@ -956,41 +943,40 @@ function updateThemePreview(themeValue) {
 
 (defun render-playground (&optional board (prefs *preferences*))
   "Renders the interactive Common Lisp playground view."
-  (let ((theme (preferences-theme prefs)))
-    (layout (if board (format nil "/~a/ - Lisp Playground" board) "Lisp Playground")
-            "playground-page"
-            prefs
-      (cl-who:with-html-output-to-string (s nil :indent t)
-        (when board
-          (cl-who:htm (cl-who:str (render-menu board "playground"))))
-        (:h2 "Common Lisp Playground")
-        (:p :style "margin: 0.5em 2%; font-size: 0.95em;"
-            "Write and execute Common Lisp code directly in your browser using "
-            (:a :href "https://github.com/jscl-project/jscl" :target "_blank" "JSCL")
-            ". Everything runs completely client-side in a sandboxed environment.")
-        (:div :class "playground-container" :style "margin: 1.5em 2%;"
-              (:div :style "margin-bottom: 1em; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;"
-                    (:span "Load Example: ")
-                    (:select :id "playground-examples" :style "padding: 4px;"
-                             (:option :value "" "-- Select Example --")
-                             (:option :value "hello" "Hello World")
-                             (:option :value "fib" "Fibonacci Numbers")
-                             (:option :value "loop" "Loop Macro")
-                             (:option :value "clos" "Common Lisp Object System (CLOS)")))
-              (:div :id "example-data-hello" :style "display:none;"
-                    (cl-who:str (colorize:html-colorization :common-lisp "(format t \"Hello, World!~%\")")))
-              (:div :id "example-data-fib" :style "display:none;"
-                    (cl-who:str (colorize:html-colorization :common-lisp "(defun fib (n)
+  (layout (if board (format nil "/~a/ - Lisp Playground" board) "Lisp Playground")
+          "playground-page"
+          prefs
+          (cl-who:with-html-output-to-string (s nil :indent t)
+            (when board
+              (cl-who:htm (cl-who:str (render-menu board "playground"))))
+            (:h2 "Common Lisp Playground")
+            (:p :style "margin: 0.5em 2%; font-size: 0.95em;"
+                "Write and execute Common Lisp code directly in your browser using "
+                (:a :href "https://github.com/jscl-project/jscl" :target "_blank" "JSCL")
+                ". Everything runs completely client-side in a sandboxed environment.")
+            (:div :class "playground-container" :style "margin: 1.5em 2%;"
+                  (:div :style "margin-bottom: 1em; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;"
+                        (:span "Load Example: ")
+                        (:select :id "playground-examples" :style "padding: 4px;"
+                                 (:option :value "" "-- Select Example --")
+                                 (:option :value "hello" "Hello World")
+                                 (:option :value "fib" "Fibonacci Numbers")
+                                 (:option :value "loop" "Loop Macro")
+                                 (:option :value "clos" "Common Lisp Object System (CLOS)")))
+                  (:div :id "example-data-hello" :style "display:none;"
+                        (cl-who:str (colorize:html-colorization :common-lisp "(format t \"Hello, World!~%\")")))
+                  (:div :id "example-data-fib" :style "display:none;"
+                        (cl-who:str (colorize:html-colorization :common-lisp "(defun fib (n)
   (if (< n 2)
       n
       (+ (fib (- n 1)) (fib (- n 2)))))
 
 (format t \"Fibonacci of 10 is: ~a~%\" (fib 10))")))
-              (:div :id "example-data-loop" :style "display:none;"
-                    (cl-who:str (colorize:html-colorization :common-lisp "(loop for x from 1 to 5
+                  (:div :id "example-data-loop" :style "display:none;"
+                        (cl-who:str (colorize:html-colorization :common-lisp "(loop for x from 1 to 5
       do (format t \"Square of ~d is ~d~%\" x (* x x)))")))
-              (:div :id "example-data-clos" :style "display:none;"
-                    (cl-who:str (colorize:html-colorization :common-lisp "(defclass person ()
+                  (:div :id "example-data-clos" :style "display:none;"
+                        (cl-who:str (colorize:html-colorization :common-lisp "(defclass person ()
   ((name :accessor person-name :initarg :name)
    (age :accessor person-age :initarg :age)))
 
@@ -1001,32 +987,32 @@ function updateThemePreview(themeValue) {
 
 (let ((p (make-instance 'person :name \"Alice\" :age 30)))
   (introduce p))")))
-              (:pre :id "playground-editor"
-                    :class "lisp-code-block"
-                    :contenteditable "true"
-                    :spellcheck "false"
-                    :style (concatenate 'string
-                                        "min-height: 200px; width: 96%; max-width: 800px; "
-                                        "font-family: monospace; font-size: 1.1em; padding: 10px; "
-                                        "border: 1px solid currentColor; background: transparent; "
-                                        "color: inherit; margin-bottom: 1em; outline: none; "
-                                        "overflow: auto; white-space: pre-wrap;")
-                    "")
-              (:div :style "display: flex; gap: 10px; margin-bottom: 1em;"
-                    (:button :id "playground-run"
-                             :style "padding: 6px 15px; font-size: 1em; cursor: pointer; font-weight: bold;"
-                             "Run Code")
-                    (:button :id "playground-clear"
-                             :style "padding: 6px 15px; font-size: 1em; cursor: pointer;"
-                             "Clear Output"))
-              (:h3 "Output Console")
-              (:pre :id "playground-output"
-                    :style (concatenate 'string
-                                        "display: none; padding: 10px; width: 96%; max-width: 800px; "
-                                        "border: 1px dashed currentColor; "
-                                        "background-color: rgba(128, 128, 128, 0.05); white-space: pre-wrap; "
-                                        "word-break: break-all; font-family: monospace; font-size: 1.1em; "
-                                        "line-height: 1.4em;")
-                    ""))
-        (:hr)
-        (cl-who:str (render-footer-html))))))
+                  (:pre :id "playground-editor"
+                        :class "lisp-code-block"
+                        :contenteditable "true"
+                        :spellcheck "false"
+                        :style (concatenate 'string
+                                            "min-height: 200px; width: 96%; max-width: 800px; "
+                                            "font-family: monospace; font-size: 1.1em; padding: 10px; "
+                                            "border: 1px solid currentColor; background: transparent; "
+                                            "color: inherit; margin-bottom: 1em; outline: none; "
+                                            "overflow: auto; white-space: pre-wrap;")
+                        "")
+                  (:div :style "display: flex; gap: 10px; margin-bottom: 1em;"
+                        (:button :id "playground-run"
+                                 :style "padding: 6px 15px; font-size: 1em; cursor: pointer; font-weight: bold;"
+                                 "Run Code")
+                        (:button :id "playground-clear"
+                                 :style "padding: 6px 15px; font-size: 1em; cursor: pointer;"
+                                 "Clear Output"))
+                  (:h3 "Output Console")
+                  (:pre :id "playground-output"
+                        :style (concatenate 'string
+                                            "display: none; padding: 10px; width: 96%; max-width: 800px; "
+                                            "border: 1px dashed currentColor; "
+                                            "background-color: rgba(128, 128, 128, 0.05); white-space: pre-wrap; "
+                                            "word-break: break-all; font-family: monospace; font-size: 1.1em; "
+                                            "line-height: 1.4em;")
+                        ""))
+            (:hr)
+            (cl-who:str (render-footer-html)))))
