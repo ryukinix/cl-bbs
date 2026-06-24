@@ -43,11 +43,11 @@ jobs:
           
           Host ${{ secrets.DEPLOY_HOST }}
             User ${{ secrets.DEPLOY_USER }}
-            ProxyCommand cloudflared access ssh --hostname %h --service-token-id ${{ secrets.TUNNEL_SERVICE_TOKEN_ID }} --service-token-secret ${{ secrets.TUNNEL_SERVICE_TOKEN_SECRET }}
+            ProxyCommand cloudflared access ssh --hostname %h --id ${{ secrets.TUNNEL_SERVICE_TOKEN_ID }} --secret ${{ secrets.TUNNEL_SERVICE_TOKEN_SECRET }}
           SSHCFG
           
           chmod 600 ~/.ssh/config
 
       - name: Trigger QA Remote Deployment
         run: |
-          ssh ${{ secrets.DEPLOY_HOST }} 'cd ~/Deploy && make deploy-qa'
+          ssh ${{ secrets.DEPLOY_HOST }} 'deploy apply cl-bbs-qa'
