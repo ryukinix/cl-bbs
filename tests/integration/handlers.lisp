@@ -283,3 +283,59 @@
       (let ((board-dir (merge-pathnames "sexp/lockedboard/" cl-bbs/storage:*base-dir*)))
         (when (probe-file board-dir)
           (uiop:delete-directory-tree board-dir :validate t))))))
+
+(define-test test-post-size-limits
+  :parent integration
+  ;; Ensure board dirs are created for testing board 'foo'
+  (cl-bbs/storage:ensure-board-dirs "foo")
+  (let ((original-headline-limit cl-bbs/handlers:*headline-limit*)
+        (original-body-limit cl-bbs/handlers:*body-limit*))
+    (unwind-protect
+         (progn
+           ;; Set small limits for testing ease
+           (setf cl-bbs/handlers:*headline-limit* 10)
+           (setf cl-bbs/handlers:*body-limit* 20)
+
+           ;; 1. POST New Thread with Too Long Headline (should 400 with HTML error page)
+           (let* ((body-str "titulus=ThisHeadlineIsTooLong&epistula=ShortBody")
+                  (body-bytes (flexi-streams:string-to-octets body-str :external-format :utf-8))
+                  (stream (flexi-streams:make-in-memory-input-stream body-bytes))
+                  (env (list :path-info "/foo/post"
+                             :request-method :post
+                             :content-length (length body-bytes)
+                             :raw-body stream))
+                  (res (cl-bbs/handlers:handle-request env)))
+             (is = 400 (first res))
+             (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
+             (is equal t (not (null (search "Headline exceeds maximum length of 10 characters"
+                                            (first (third res)))))))
+
+           ;; 2. POST New Thread with Too Long Body (should 400 with HTML error page)
+           (let* ((body-str "titulus=Short&epistula=ThisBodyIsWayTooLongForThisLimit")
+                  (body-bytes (flexi-streams:string-to-octets body-str :external-format :utf-8))
+                  (stream (flexi-streams:make-in-memory-input-stream body-bytes))
+                  (env (list :path-info "/foo/post"
+                             :request-method :post
+                             :content-length (length body-bytes)
+                             :raw-body stream))
+                  (res (cl-bbs/handlers:handle-request env)))
+             (is = 400 (first res))
+             (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
+             (is equal t (not (null (search "Post body exceeds maximum length of 20 characters"
+                                            (first (third res)))))))
+
+           ;; 3. POST Reply with Too Long Body (should 400 with HTML error page)
+           (let* ((body-str "epistula=ThisBodyIsWayTooLongForThisLimit")
+                  (body-bytes (flexi-streams:string-to-octets body-str :external-format :utf-8))
+                  (stream (flexi-streams:make-in-memory-input-stream body-bytes))
+                  (env (list :path-info "/foo/1/post"
+                             :request-method :post
+                             :content-length (length body-bytes)
+                             :raw-body stream))
+                  (res (cl-bbs/handlers:handle-request env)))
+             (is = 400 (first res))
+             (is equal "text/html; charset=utf-8" (getf (second res) :content-type))
+             (is equal t (not (null (search "Post body exceeds maximum length of 20 characters"
+                                            (first (third res))))))))
+      (setf cl-bbs/handlers:*headline-limit* original-headline-limit)
+      (setf cl-bbs/handlers:*body-limit* original-body-limit))))
