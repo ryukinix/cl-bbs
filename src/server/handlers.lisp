@@ -15,9 +15,23 @@
                 #:render-thread
                 #:render-search-results
                 #:render-playground)
-  (:export #:handle-request))
+  (:export #:handle-request
+           #:*headline-limit*
+           #:*body-limit*))
 
 (in-package :cl-bbs/handlers)
+
+(defparameter *headline-limit*
+  (or (and (uiop:getenv "SBBS_HEADLINE_LIMIT")
+           (parse-integer (uiop:getenv "SBBS_HEADLINE_LIMIT") :junk-allowed t))
+      128)
+  "Maximum character limit for post headlines.")
+
+(defparameter *body-limit*
+  (or (and (uiop:getenv "SBBS_BODY_LIMIT")
+           (parse-integer (uiop:getenv "SBBS_BODY_LIMIT") :junk-allowed t))
+      4096)
+  "Maximum character limit for post bodies.")
 
 (defun parse-cookies (cookie-string)
   "Parses a Cookie header string like 'theme=dark; foo=bar' into an alist."
@@ -694,11 +708,21 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                (threads (read-sexp-file list-path))
                (thread-number (get-next-thread-number threads))
                (thread-path (merge-pathnames (format nil "sexp/~a/~a" board thread-number) *base-dir*)))
-          (if (or (null epistula)
-                  (string= "" (string-trim '(#\Space #\Tab #\Newline #\Return) epistula)))
-              `(400 (:content-type "text/html; charset=utf-8")
-                    (,(render-error-page "Post body cannot be empty" cl-bbs/views:*preferences*)))
-              (progn
+          (cond
+            ((or (null epistula)
+                 (string= "" (string-trim '(#\Space #\Tab #\Newline #\Return) epistula)))
+             `(400 (:content-type "text/html; charset=utf-8")
+                   (,(render-error-page "Post body cannot be empty" cl-bbs/views:*preferences*))))
+            ((and titulus (> (length titulus) *headline-limit*))
+             `(400 (:content-type "text/html; charset=utf-8")
+                   (,(render-error-page (format nil "Headline exceeds maximum length of ~D characters" *headline-limit*)
+                                        cl-bbs/views:*preferences*))))
+            ((and epistula (> (length epistula) *body-limit*))
+             `(400 (:content-type "text/html; charset=utf-8")
+                   (,(render-error-page (format nil "Post body exceeds maximum length of ~D characters" *body-limit*)
+                                        cl-bbs/views:*preferences*))))
+            (t
+             (progn
                 (when (is-board-locked board)
                   (return-from out
                     `(403 (:content-type "text/html; charset=utf-8")
@@ -713,7 +737,7 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                 (create-thread thread-path titulus date epistula)
                 (add-thread-to-list list-path thread-number titulus date)
                 (add-thread-to-index index-path thread-number titulus date epistula)
-                `(303 (:location ,(format nil "/~a/" board)) ("Redirecting..."))))))))
+                `(303 (:location ,(format nil "/~a/" board)) ("Redirecting...")))))))))
 
 ;; 11. GET /:board
 (setf (ningle:route *app* "/:board" :method :GET)
@@ -750,11 +774,17 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                  (epistula (cdr (assoc "epistula" parsed-params :test #'string=)))
                  (date (get-date))
                  (thread-path (merge-pathnames (format nil "sexp/~a/~a" board thread-id) *base-dir*)))
-            (if (or (null epistula)
-                    (string= "" (string-trim '(#\Space #\Tab #\Newline #\Return) epistula)))
-                `(400 (:content-type "text/html; charset=utf-8")
-                      (,(render-error-page "Post body cannot be empty" cl-bbs/views:*preferences*)))
-                (progn
+            (cond
+              ((or (null epistula)
+                   (string= "" (string-trim '(#\Space #\Tab #\Newline #\Return) epistula)))
+               `(400 (:content-type "text/html; charset=utf-8")
+                     (,(render-error-page "Post body cannot be empty" cl-bbs/views:*preferences*))))
+              ((and epistula (> (length epistula) *body-limit*))
+               `(400 (:content-type "text/html; charset=utf-8")
+                     (,(render-error-page (format nil "Post body exceeds maximum length of ~D characters" *body-limit*)
+                                          cl-bbs/views:*preferences*))))
+              (t
+               (progn
                   (when (is-board-locked board)
                     (return-from out
                       `(403 (:content-type "text/html; charset=utf-8")
@@ -834,7 +864,7 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                                                             actual-posts)))))
                                (write-sexp-file index-path (cons updated-entry rem-index))))))
                         `(303 (:location ,(format nil "/~a/" board)) ("Redirecting...")))
-                      `(404 (:content-type "text/plain") ("Thread not found")))))))))
+                      `(404 (:content-type "text/plain") ("Thread not found"))))))))))
 
 ;; 14. GET /:board/:thread_id/:range (Thread Comments with Range)
 (setf (ningle:route *app* "/:board/:thread_id/:range" :method :GET)
