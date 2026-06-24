@@ -22,12 +22,31 @@ jobs:
       - name: Build and Publish Image
         run: make publish
 
+      - name: Configure SSH and Cloudflare Tunnel
+        run: |
+          mkdir -p ~/.ssh
+          
+          # Setup private key
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+          # Install cloudflared
+          curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared.deb
+          
+          # Setup SSH config
+          cat << 'SSHCFG' > ~/.ssh/config
+          Host *
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            
+          Host ${{ secrets.DEPLOY_HOST }}
+            User ${{ secrets.DEPLOY_USER }}
+            ProxyCommand cloudflared access ssh --hostname %h --service-token-id ${{ secrets.TUNNEL_SERVICE_TOKEN_ID }} --service-token-secret ${{ secrets.TUNNEL_SERVICE_TOKEN_SECRET }}
+          SSHCFG
+          
+          chmod 600 ~/.ssh/config
+
       - name: Trigger Remote Deployment
-        uses: and-fm/cloudflared-ssh-action@v3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          private_key_value: ${{ secrets.SSH_PRIVATE_KEY }}
-          service_token_id: ${{ secrets.TUNNEL_SERVICE_TOKEN_ID }}
-          service_token_secret: ${{ secrets.TUNNEL_SERVICE_TOKEN_SECRET }}
-          commands: deploy apply cl-bbs
+        run: |
+          ssh ${{ secrets.DEPLOY_HOST }} 'cd ~/Deploy && make deploy'
