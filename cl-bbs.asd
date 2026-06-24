@@ -46,7 +46,7 @@
 (asdf:defsystem :cl-bbs/server
   :class cl-bbs/system:custom-system-class
   :author #.cl-bbs/system:*author*
-  :description "SchemeBBS port to Common Lisp"
+  :description "Textboard written in Common Lisp"
   :version #.cl-bbs/system:*version*
   :build-metadata #.cl-bbs/system:*build-metadata*
   :license #.cl-bbs/system:*license*
@@ -76,7 +76,7 @@
 (asdf:defsystem :cl-bbs
   :class cl-bbs/system:custom-system-class
   :author #.cl-bbs/system:*author*
-  :description "SchemeBBS clone in common lisp"
+  :description "Textboard written in common lisp"
   :version #.cl-bbs/system:*version*
   :build-metadata #.cl-bbs/system:*build-metadata*
   :license #.cl-bbs/system:*license*

@@ -127,7 +127,7 @@ function validatePostForm(form, errorId) {
 
 (defun render-error-page (error-message &optional (prefs *preferences*))
   "Renders an HTML error page displaying the given ERROR-MESSAGE, using the specified layout PREFS."
-  (layout "Error - SchemeBBS" "error-page" prefs
+  (layout "Error - cl-bbs" "error-page" prefs
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:h1 "Error")
       (:hr)
@@ -507,7 +507,7 @@ function validatePostForm(form, errorId) {
 (defun render-index (board threads &optional (prefs *preferences*))
   "Renders the board index (frontpage) HTML with the list of active THREADS
 and the new thread form, using layout PREFS."
-  (layout (format nil "/~a/ - SchemeBBS" board) nil prefs
+  (layout (format nil "/~a/ - cl-bbs" board) nil prefs
     (cl-who:with-html-output-to-string (s nil :indent t)
       (cl-who:str (render-board-name board))
       (cl-who:str (render-menu board "front"))
@@ -522,7 +522,7 @@ and the new thread form, using layout PREFS."
 
 (defun render-list (board threads &optional (prefs *preferences*))
   "Renders the board thread-list HTML page, showing all THREADS in tabular format, using layout PREFS."
-  (layout (format nil "/~a/ - SchemeBBS" board) nil prefs
+  (layout (format nil "/~a/ - cl-bbs" board) nil prefs
     (cl-who:with-html-output-to-string (s nil :indent t)
       (cl-who:str (render-board-name board))
       (cl-who:str (render-menu board "list"))
@@ -580,7 +580,7 @@ optionally filtered by RANGE-STRING, using layout PREFS."
                                              do (setf (gethash id allowed-ids) t))))))))
                             (lambda (id) (gethash id allowed-ids)))
                           (lambda (id) (declare (ignore id)) t))))
-    (layout (format nil "/~a/ - SchemeBBS" board) "thread" prefs
+    (layout (format nil "/~a/ - cl-bbs" board) "thread" prefs
       (cl-who:with-html-output-to-string (s nil :indent t)
         (cl-who:str (render-board-name board))
         (cl-who:str (render-menu board "thread"))
@@ -894,7 +894,7 @@ function updateThemePreview(themeValue) {
 (defun render-search-results (query results &optional (prefs *preferences*))
   "Renders the search results page HTML, showing matching posts for the given QUERY, using layout PREFS."
   (let ((theme (preferences-theme prefs)))
-    (layout (format nil "Search: ~a - SchemeBBS" query) "search-results" prefs
+    (layout (format nil "Search: ~a - cl-bbs" query) "search-results" prefs
       (cl-who:with-html-output-to-string (s nil :indent t)
         (:h1 "Search Results")
         (:p :style "margin: 0.5em 2%;"
