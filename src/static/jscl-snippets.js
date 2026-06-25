@@ -120,6 +120,13 @@ function initInlineSnippets() {
       }
     });
 
+    block.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        runBtn.click();
+      }
+    });
+
     runBtn.addEventListener('click', () => {
       runBtn.disabled = true;
       const originalText = runBtn.textContent;
@@ -224,6 +231,13 @@ function initPlayground() {
   clearBtn.addEventListener('click', () => {
     outputPanel.textContent = '';
     outputPanel.style.display = 'none';
+  });
+
+  editor.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'Enter') {
+      e.preventDefault();
+      runBtn.click();
+    }
   });
 
   runBtn.addEventListener('click', () => {

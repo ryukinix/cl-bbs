@@ -288,7 +288,7 @@ textarea:focus, input[type=text]:focus {
     box-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
 }
 
-input[type=submit], button {
+input[type=submit], button, .lisp-btn {
   font-family: inherit;
   font-weight: bold;
   font-size: 1em;
@@ -303,14 +303,19 @@ input[type=submit], button {
   box-shadow: 0 0 3px #008f11;
 }
 
-input[type=submit]:hover, button:hover {
+input[type=submit]:hover, button:hover, .lisp-btn:hover {
   background-color: #00ff41;
   color: black;
   box-shadow: 0 0 8px #00ff41;
 }
 
-input[type=submit]:active, button:active {
+input[type=submit]:active, button:active, .lisp-btn:active {
   transform: scale(0.95);
+}
+
+input[type=submit]:disabled, button:disabled, .lisp-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 input[type=checkbox] {
