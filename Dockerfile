@@ -15,6 +15,8 @@ ENV APP_COMMIT_HASH=$APP_COMMIT_HASH
 ENV SBBS_DATADIR=/cl-bbs/data/
 ENV SBBS_STATIC_DIR=/cl-bbs/src/static/
 ENV SBBS_INDEX_FILE=/cl-bbs/src/static/index.html
+COPY ./scripts ./scripts
+RUN sh ./scripts/download_clhs_map.sh
 RUN ros build roswell/cl-bbs-server.ros
 EXPOSE 8222
 ENTRYPOINT ["/cl-bbs/roswell/cl-bbs-server"]
