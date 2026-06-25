@@ -16,6 +16,7 @@
 *.wx64fsl
 *.wx32fsl
 data/
+src/HyperSpec/
 .qlot/
 qlfile.lock
 plan/
