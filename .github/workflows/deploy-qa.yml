@@ -1,12 +1,15 @@
 name: Deploy to QA
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  workflow_run:
+    workflows: ["Check"]
+    types:
+      - completed
   workflow_dispatch:
 
 jobs:
   deploy-qa:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch != 'master' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR Source
