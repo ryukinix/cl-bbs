@@ -9,11 +9,13 @@
   (handler-case
       (let* ((base-dir (asdf:system-source-directory :cl-bbs/server))
              (local-clhs-dir (and base-dir (merge-pathnames "src/HyperSpec/" base-dir)))
-             (local-map-file (and local-clhs-dir (merge-pathnames "Data/Map_Sym.txt" local-clhs-dir))))
+             (local-map-file (and local-clhs-dir (merge-pathnames "Data/Map_Sym.txt" local-clhs-dir)))
+             (mop-map-file (and local-clhs-dir (merge-pathnames "Mop_Sym.txt" local-clhs-dir))))
         (if (and local-map-file (probe-file local-map-file))
             (progn
               (setf clhs-lookup::*hyperspec-pathname* local-clhs-dir)
-              (setf clhs-lookup::*hyperspec-map-file* local-map-file))
+              (setf clhs-lookup::*hyperspec-map-file* local-map-file)
+              (setf clhs-lookup::*mop-map-file* mop-map-file))
             (setf clhs-lookup::*hyperspec-map-file* #p"nonexistent-map-sym.txt")))
     (error (e)
       (declare (ignore e))

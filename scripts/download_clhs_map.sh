@@ -6,14 +6,22 @@ MAP_DIR="src/HyperSpec/Data"
 MAP_FILE="${MAP_DIR}/Map_Sym.txt"
 MAP_URL="http://www.lispworks.com/reference/HyperSpec/Data/Map_Sym.txt"
 
+MOP_MAP_DIR="src/HyperSpec"
+MOP_MAP_FILE="${MOP_MAP_DIR}/Mop_Sym.txt"
+
 echo "Creating local HyperSpec symbol map directory: ${MAP_DIR}..."
 mkdir -p "${MAP_DIR}"
+
+echo "Creating local MOP symbol map directory: ${MOP_MAP_DIR}..."
+mkdir -p "${MOP_MAP_DIR}"
 
 echo "Downloading official Map_Sym.txt from Lispworks..."
 if command -v curl >/dev/null 2>&1; then
     curl -sSL "${MAP_URL}" -o "${MAP_FILE}"
+    echo "" > "${MOP_MAP_FILE}"
 elif command -v wget >/dev/null 2>&1; then
     wget -q "${MAP_URL}" -O "${MAP_FILE}"
+    echo "" > "${MOP_MAP_FILE}"
 else
     echo "Error: Neither curl nor wget found in the system!" >&2
     exit 1
