@@ -2,7 +2,7 @@
 # Shell script to download and set up the local Common Lisp HyperSpec symbol map for cl-bbs.
 set -e
 
-MAP_DIR="data/HyperSpec/Data"
+MAP_DIR="src/HyperSpec/Data"
 MAP_FILE="${MAP_DIR}/Map_Sym.txt"
 MAP_URL="http://www.lispworks.com/reference/HyperSpec/Data/Map_Sym.txt"
 

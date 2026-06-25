@@ -8,7 +8,7 @@
   (setf colorize:*debug* nil)
   (handler-case
       (let* ((base-dir (asdf:system-source-directory :cl-bbs/server))
-             (local-clhs-dir (and base-dir (merge-pathnames "data/HyperSpec/" base-dir)))
+             (local-clhs-dir (and base-dir (merge-pathnames "src/HyperSpec/" base-dir)))
              (local-map-file (and local-clhs-dir (merge-pathnames "Data/Map_Sym.txt" local-clhs-dir))))
         (if (and local-map-file (probe-file local-map-file))
             (progn
