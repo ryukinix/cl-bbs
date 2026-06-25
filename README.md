@@ -56,8 +56,6 @@ To start the server explicitly via the `docker run` command:
 docker run --rm -it \
   -p 8222:8222 \
   -v ./data:/cl-bbs/data \
-  -v /usr/share/zoneinfo:/usr/share/zoneinfo:ro \
-  -e TZ=America/Belem \
   ryukinix/cl-bbs:latest
 ```
 
@@ -65,7 +63,7 @@ This ensures the container attaches its internal 8222 port to your host and moun
 
 #### Using Docker Compose
 
-Alternatively, you can create a `docker-compose.yml` string together configuration declaratively for smoother container lifecycle management in an infrastructure setting:
+Alternatively, you can create a `docker-compose.yml` file to organize your configuration declaratively for smoother container management:
 
 ```yaml
 services:
@@ -73,13 +71,10 @@ services:
     image: ryukinix/cl-bbs:latest
     container_name: cl-bbs
     restart: unless-stopped
-    environment:
-      - TZ=America/Belem
     ports:
       - "8222:8222"
     volumes:
       - ./data:/cl-bbs/data
-      - /usr/share/zoneinfo:/usr/share/zoneinfo:ro
 ```
 
 Then launch it using:
