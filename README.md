@@ -44,9 +44,52 @@ Clone the repository and install dependencies locally:
 qlot install
 ```
 
-### Running the Server
+### Running the Server with Docker
 
-Start the Hunchentoot/Clack server:
+You can easily run the server inside a Docker container. The application will listen for incoming traffic natively on port `8222` and persist data using a mounted volume.
+
+#### Using Docker CLI
+
+To start the server explicitly via the `docker run` command:
+
+```bash
+docker run --rm -it \
+  -p 8222:8222 \
+  -v ./data:/cl-bbs/data \
+  -v /usr/share/zoneinfo:/usr/share/zoneinfo:ro \
+  -e TZ=America/Belem \
+  ryukinix/cl-bbs:latest
+```
+
+This ensures the container attaches its internal 8222 port to your host and mounts your local `./data` directory directly, protecting threads and posts between restarts.
+
+#### Using Docker Compose
+
+Alternatively, you can create a `docker-compose.yml` string together configuration declaratively for smoother container lifecycle management in an infrastructure setting:
+
+```yaml
+services:
+  cl-bbs:
+    image: ryukinix/cl-bbs:latest
+    container_name: cl-bbs
+    restart: unless-stopped
+    environment:
+      - TZ=America/Belem
+    ports:
+      - "8222:8222"
+    volumes:
+      - ./data:/cl-bbs/data
+      - /usr/share/zoneinfo:/usr/share/zoneinfo:ro
+```
+
+Then launch it using:
+```bash
+docker compose up -d
+```
+
+### Running the Server Locally
+
+If you prefer to run it transparently without Docker, start the Hunchentoot/Clack server natively:
 
 ```bash
 make server
