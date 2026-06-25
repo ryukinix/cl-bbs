@@ -67,9 +67,10 @@
                (:module "server"
                 :depends-on ("package")
                 :components ((:file "models")
+                             (:file "markup")
                              (:file "storage" :depends-on ("models"))
-                             (:file "views" :depends-on ("models"))
-                             (:file "handlers" :depends-on ("storage" "views"))
+                             (:file "views" :depends-on ("models" "markup"))
+                             (:file "handlers" :depends-on ("storage" "views" "markup"))
                              (:file "main" :depends-on ("handlers" "storage"))
                              (:file "admin" :depends-on ("storage"))))))
 

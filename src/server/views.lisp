@@ -8,6 +8,8 @@
                 #:fmt)
   (:import-from :cl-bbs/storage
                 #:is-board-locked)
+  (:import-from :cl-bbs/markup
+                #:format-text)
   (:export #:render-index
            #:render-list
            #:render-thread
@@ -114,6 +116,56 @@ function validatePostForm(form, errorId) {
   }
   return true;
 }
+
+function togglePreview(button, textareaName, threadId) {
+  const form = button.form;
+  const textarea = form.querySelector('textarea[name=\"' + textareaName + '\"]');
+  const content = textarea.value.trim();
+
+  if (!content) {
+    alert('Post body cannot be empty for preview!');
+    return;
+  }
+
+  let previewDiv = form.querySelector('.post-preview-container');
+  if (!previewDiv) {
+    previewDiv = document.createElement('div');
+    previewDiv.className = 'post-preview-container';
+    previewDiv.style.margin = '1em 0';
+    previewDiv.style.padding = '0.8em';
+    previewDiv.style.border = '1px dashed currentColor';
+    previewDiv.style.borderRadius = '4px';
+    previewDiv.style.display = 'none';
+    form.appendChild(previewDiv);
+  }
+
+  if (previewDiv.style.display === 'block') {
+    previewDiv.style.display = 'none';
+    button.value = 'Preview';
+    return;
+  }
+
+  previewDiv.innerHTML = '<em>Loading preview...</em>';
+  previewDiv.style.display = 'block';
+  button.value = 'Hide Preview';
+
+  const bodyData = 'content=' + encodeURIComponent(content) +
+    (threadId ? '&thread_id=' + encodeURIComponent(threadId) : '');
+
+  fetch('/api/preview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: bodyData
+  })
+  .then(res => res.text())
+  .then(html => {
+    previewDiv.innerHTML = html;
+  })
+  .catch(err => {
+    console.error(err);
+    previewDiv.innerHTML = '<span style=\"color:red;\">Failed to load preview.</span>';
+  });
+}
 ")
        (:script :src "/static/jscl-snippets.js" :defer t))
       (:body :class ,class
@@ -182,7 +234,7 @@ function validatePostForm(form, errorId) {
                (cl-who:htm (:input :type "hidden" :name "board" :value board)))
              (:input :type "text" :name "q" :placeholder "Search posts..."
                      :style "padding: 2px 5px; font-size: 0.85em; margin-right: 5px;")
-             (:input :type "submit" :value "Search" :style "padding: 2px 8px; font-size: 0.85em;")))))
+             (:input :type "submit" :value "Search" :class "lisp-btn")))))
 
 (defun render-boards-header ()
   (let* ((sexp-dir (merge-pathnames "sexp/" cl-bbs/storage:*base-dir*))
@@ -211,7 +263,7 @@ function validatePostForm(form, errorId) {
                         (cl-who:htm (:input :type "hidden" :name "board" :value board)))
                       (:input :type "text" :name "q" :placeholder "Search posts..."
                      :style "padding: 2px 5px; font-size: 0.85em; margin-right: 5px;")
-                      (:input :type "submit" :value "Search" :style "padding: 2px 8px; font-size: 0.85em;"))))))))
+                      (:input :type "submit" :value "Search" :class "lisp-btn"))))))))
 
 (defun render-menu (board selected)
   (cl-who:with-html-output-to-string (s nil :indent t)
@@ -242,190 +294,38 @@ function validatePostForm(form, errorId) {
           (:h2 :id "newthread" "New thread")
           (:p :id "newthread-error" :style "color: red; font-weight: bold; display: none;")
           (:form :action (format nil "/~a/post" board)
-                 :method "POST"
-                 :onsubmit "return validatePostForm(this, 'newthread-error');"
+          :method "POST"
+          :onsubmit "return validatePostForm(this, \"newthread-error\");"
                  (:p (:input :type "text" :name "titulus" :size 35 :placeholder "Headline"))
                  (:p (:textarea :name "epistula"
                                 :rows 5
                                 :cols 50
                                 :placeholder "Message"
-                                :onkeydown "if(event.ctrlKey && event.key === 'Enter') {
-  if (validatePostForm(this.form, 'newthread-error')) {
-    this.form.submit();
-  }
-}"))
+                                :onkeydown "if(event.ctrlKey && event.key === 'Enter') { if (validatePostForm(this.form, \"newthread-error\")) { this.form.submit(); } }"))
                  (:p (:input :type "text" :name "name" :style "display:none")
                      (:input :type "text" :name "message" :style "display:none")
-                     (:input :type "submit" :value "Post"))))))
-
-(defun unescape-html (string)
-  (let ((s string))
-    (setf s (cl-ppcre:regex-replace-all "&quot;" s "\""))
-    (setf s (cl-ppcre:regex-replace-all "&lt;" s "<"))
-    (setf s (cl-ppcre:regex-replace-all "&gt;" s ">"))
-    (setf s (cl-ppcre:regex-replace-all "&#39;" s "'"))
-    (setf s (cl-ppcre:regex-replace-all "&#039;" s "'"))
-    (setf s (cl-ppcre:regex-replace-all "&apos;" s "'"))
-    (setf s (cl-ppcre:regex-replace-all "&#[xX]([0-9a-fA-F]+);" s
-                                        (lambda (match-string hex-str)
-                                          (declare (ignore match-string))
-                                          (string (code-char (parse-integer hex-str :radix 16))))
-                                        :simple-calls t))
-    (setf s (cl-ppcre:regex-replace-all "&#([0-9]+);" s
-                                        (lambda (match-string dec-str)
-                                          (declare (ignore match-string))
-                                          (string (code-char (parse-integer dec-str :radix 10))))
-                                        :simple-calls t))
-    (setf s (cl-ppcre:regex-replace-all "&amp;" s "&"))
-    s))
-
-(defun format-text (text &optional thread-id)
-  (let* ((escaped (cl-who:escape-string text))
-         ;; 1. Extract code blocks
-         (code-blocks '())
-         (code-block-placeholder-format "<!--CODEBLOCK-PLACEHOLDER-~a-->")
-         (placeholder-idx 0)
-         (processed escaped))
-    (setf processed
-          (cl-ppcre:regex-replace-all
-           "(?s)```\\n*(.*?)\\n*```"
-           processed
-           (lambda (match-string &optional content &rest others)
-             (declare (ignore match-string others))
-             (let ((placeholder (format nil code-block-placeholder-format (incf placeholder-idx))))
-               (push (cons placeholder (or content "")) code-blocks)
-               placeholder))
-           :simple-calls t))
-    (setf processed
-          (cl-ppcre:regex-replace-all
-           "(?m)^&gt;(?!&gt;)\\s*(.*?)$"
-           processed
-           "<blockquote>\\1</blockquote>"))
-    (setf processed
-          (cl-ppcre:regex-replace-all
-           "\\*\\*(.*?)\\*\\*"
-           processed
-           "<b>\\1</b>"))
-    (setf processed
-          (cl-ppcre:regex-replace-all
-           "__(.*?)__"
-           processed
-           "<i>\\1</i>"))
-    (setf processed
-          (cl-ppcre:regex-replace-all
-           "`([^`]+)`"
-           processed
-           "<code>\\1</code>"))
-    (setf processed
-          (cl-ppcre:regex-replace-all
-           "~~(.*?)~~"
-           processed
-           "<del>\\1</del>"))
-    (setf processed
-          (cl-ppcre:regex-replace-all
-           "&gt;&gt;(\\d+)"
-           processed
-           (lambda (match-string &optional num &rest others)
-             (declare (ignore match-string others))
-             (let ((num-val (or num "")))
-               (if thread-id
-                   (format nil "<a href=\"#t~ap~a\">&gt;&gt;~a</a>" thread-id num-val num-val)
-                   (format nil "<a href=\"#t~a\">&gt;&gt;~a</a>" num-val num-val))))
-           :simple-calls t))
-    (setf processed
-          (cl-ppcre:regex-replace-all
-           "https?://[\\w\\-\\.\\/\\?\\=\\&\\%#\\+:\\;]+"
-           processed
-           "<a href=\"\\&\" target=\"_blank\">\\&</a>"))
-    (setf processed
-          (cl-ppcre:regex-replace-all
-           (concatenate 'string
-                        "<a href=\"(https?://[\\w\\-\\.\\/\\?\\=\\&\\%#\\+:\\;]+"
-                        "\\.(?:png|jpg|jpeg|gif|webp|bmp))\" "
-                        "target=\"_blank\">.*?</a>")
-           processed
-           (concatenate 'string
-                        "<br /><a href=\"\\1\" target=\"_blank\">"
-                        "<img src=\"\\1\" style=\"max-width:300px; "
-                        "max-height:300px; display:block; margin:0.5em 0;\" "
-                        "alt=\"preview\" /></a><br />")))
-    (setf processed
-          (cl-ppcre:regex-replace-all
-           "image\\+<a href=\"(https?://[\\w\\-\\.\\/\\?\\=\\&\\%#\\+:\\;]+)\" target=\"_blank\">.*?</a>"
-           processed
-           (concatenate 'string
-                        "<br /><a href=\"\\1\" target=\"_blank\">"
-                        "<img src=\"\\1\" style=\"max-width:300px; "
-                        "max-height:300px; display:block; margin:0.5em 0;\" "
-                        "alt=\"preview\" /></a><br />")))
-    (setf processed
-          (cl-ppcre:regex-replace-all
-           "\\r\\n"
-           processed
-           (string #\Newline)))
-    (setf processed
-          (cl-ppcre:regex-replace-all
-           "\\n\\n+"
-           processed
-           "</p><p>"))
-    (setf processed
-          (cl-ppcre:regex-replace-all
-           "\\n"
-           processed
-           "<br />"))
-    (setf processed (format nil "<p>~a</p>" processed))
-    (dolist (pair code-blocks)
-      (let ((placeholder (car pair))
-            (content (cdr pair)))
-        (setf processed
-              (cl-ppcre:regex-replace-all
-               placeholder
-               processed
-               (lambda (match-string &optional regs)
-                 (declare (ignore match-string regs))
-                 (multiple-value-bind (match-start match-end reg-starts reg-ends)
-                     (cl-ppcre:scan "^(?i)(lisp|cl|common-lisp)\\r?\\n" content)
-                   (declare (ignore reg-starts reg-ends))
-                   (if match-start
-                       (let* ((escaped-code (subseq content match-end))
-                              (raw-code (unescape-html escaped-code))
-                              (colorized-code (handler-case (colorize:html-colorization :common-lisp raw-code)
-                                                (error () (cl-who:escape-string raw-code)))))
-                         ;; Note: colorize already wraps the result in <span class="..."><span class="paren1">...
-                         ;; We wrap it in <pre class="lisp-code-block"> but keep a data-raw-code attribute
-                         ;; or just use content for JS execution. JSCL needs the raw text. To avoid JSCL trying
-                         ;; to parse HTML, we'll embed the raw code in a hidden div, or rely on JS `textContent`
-                         ;; which extracts raw text from nested HTML elements. `textContent` works well.
-                         (format nil "</p><pre class=\"lisp-code-block\">~a</pre><p>" colorized-code))
-                       (format nil "</p><pre>~a</pre><p>" content))))
-               :simple-calls t))))
-    (setf processed
-          (cl-ppcre:regex-replace-all
-           "<p>\\s*</p>"
-           processed
-           ""))
-    processed))
-
+                     (:input :type "submit" :value "Post" :class "lisp-btn")
+                     (:input :type "button" :value "Preview" :class "lisp-btn" 
+                             :style "margin-left: 5px;"
+                             :onclick "togglePreview(this, \"epistula\", null);"))))))
 (defun render-post-form (board thread-id)
   (let ((error-id (format nil "reply-error-~a" thread-id)))
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:p :id error-id :style "color: red; font-weight: bold; display: none;")
       (:form :action (format nil "/~a/~a/post" board thread-id)
              :method "POST"
-             :onsubmit (format nil "return validatePostForm(this, '~a');" error-id)
+             :onsubmit (format nil "return validatePostForm(this, \"~a\");" error-id)
              (:p (:textarea :name "epistula"
                             :rows 8
                             :cols 78
                             :placeholder "Message"
-                            :onkeydown (format nil "if(event.ctrlKey && event.key === 'Enter') {
-  if (validatePostForm(this.form, '~a')) {
-    this.form.submit();
-  }
-}" error-id))
-                 (:br)
-                 (:input :type "text" :name "name" :class "name" :style "display:none")
+                            :onkeydown (format nil "if(event.ctrlKey && event.key === 'Enter') { if (validatePostForm(this.form, \"~a\")) { this.form.submit(); } }" error-id)))
+             (:p (:input :type "text" :name "name" :class "name" :style "display:none")
                  (:input :type "text" :name "message" :class "message" :style "display:none")
-                 (:input :type "submit" :value "POST"))))))
+                 (:input :type "submit" :value "POST" :class "lisp-btn")
+                 (:input :type "button" :value "Preview" :class "lisp-btn"
+                          :style "margin-left: 5px;"
+                          :onclick (format nil "togglePreview(this, \"epistula\", '~a');" thread-id)))))))
 
 (defun render-frontpage-thread (board thread-data index &optional (prefs *preferences*))
   (let* ((thread-id (car thread-data))

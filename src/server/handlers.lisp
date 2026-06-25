@@ -635,6 +635,19 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                         (error () (cl-who:escape-string code)))))
               `(400 (:content-type "text/plain") ("No code provided"))))))
 
+;; 6b-api2. POST /api/preview
+(setf (ningle:route *app* "/api/preview" :method :POST)
+      (lambda (params)
+        (let* ((env (lack.request:request-env ningle:*request*))
+               (parsed-params (get-body-params params env))
+               (content (cdr (assoc "content" parsed-params :test #'string=)))
+               (thread-id (cdr (assoc "thread_id" parsed-params :test #'string=))))
+          (if content
+              `(200 (:content-type "text/html; charset=utf-8")
+                    (,(cl-bbs/markup:format-text content thread-id)))
+              `(400 (:content-type "text/plain") ("No content provided"))))))
+
+
 ;; 6c. GET /playground (Global Playground)
 (setf (ningle:route *app* "/playground" :method :GET)
       (lambda (params)
