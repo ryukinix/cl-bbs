@@ -114,6 +114,17 @@ function validatePostForm(form, errorId) {
   }
   return true;
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('textarea[name=\"epistula\"]').forEach(function(ta) {
+    ta.addEventListener('keydown', function(e) {
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        ta.form.requestSubmit();
+      }
+    });
+  });
+});
 ")
        (:script :src "/static/jscl-snippets.js" :defer t))
       (:body :class ,class
@@ -182,7 +193,7 @@ function validatePostForm(form, errorId) {
                (cl-who:htm (:input :type "hidden" :name "board" :value board)))
              (:input :type "text" :name "q" :placeholder "Search posts..."
                      :style "padding: 2px 5px; font-size: 0.85em; margin-right: 5px;")
-             (:input :type "submit" :value "Search" :style "padding: 2px 8px; font-size: 0.85em;")))))
+             (:input :type "submit" :value "Search")))))
 
 (defun render-boards-header ()
   (let* ((sexp-dir (merge-pathnames "sexp/" cl-bbs/storage:*base-dir*))
@@ -211,7 +222,7 @@ function validatePostForm(form, errorId) {
                         (cl-who:htm (:input :type "hidden" :name "board" :value board)))
                       (:input :type "text" :name "q" :placeholder "Search posts..."
                      :style "padding: 2px 5px; font-size: 0.85em; margin-right: 5px;")
-                      (:input :type "submit" :value "Search" :style "padding: 2px 8px; font-size: 0.85em;"))))))))
+                      (:input :type "submit" :value "Search"))))))))
 
 (defun render-menu (board selected)
   (cl-who:with-html-output-to-string (s nil :indent t)
@@ -248,12 +259,7 @@ function validatePostForm(form, errorId) {
                  (:p (:textarea :name "epistula"
                                 :rows 5
                                 :cols 50
-                                :placeholder "Message"
-                                :onkeydown "if(event.ctrlKey && event.key === 'Enter') {
-  if (validatePostForm(this.form, 'newthread-error')) {
-    this.form.submit();
-  }
-}"))
+                                :placeholder "Message"))
                  (:p (:input :type "text" :name "name" :style "display:none")
                      (:input :type "text" :name "message" :style "display:none")
                      (:input :type "submit" :value "Post"))))))
@@ -416,16 +422,11 @@ function validatePostForm(form, errorId) {
              (:p (:textarea :name "epistula"
                             :rows 8
                             :cols 78
-                            :placeholder "Message"
-                            :onkeydown (format nil "if(event.ctrlKey && event.key === 'Enter') {
-  if (validatePostForm(this.form, '~a')) {
-    this.form.submit();
-  }
-}" error-id))
+                            :placeholder "Message")
                  (:br)
                  (:input :type "text" :name "name" :class "name" :style "display:none")
                  (:input :type "text" :name "message" :class "message" :style "display:none")
-                 (:input :type "submit" :value "POST"))))))
+                 (:input :type "submit" :value "Post"))))))
 
 (defun render-frontpage-thread (board thread-data index &optional (prefs *preferences*))
   (let* ((thread-id (car thread-data))
@@ -727,10 +728,7 @@ stylesheet THEME, default-board and search configuration."
                                                    "Bottom (Footer)")))))
 
                (:p :style "margin-top: 2em;"
-                   (:input :type "submit" :value "Save Preferences"
-                           :style "padding: 6px 16px; font-size: 1em; cursor: pointer;
-                                   font-weight: bold; background-color: #ededed;
-                                   border: 1px solid #bababa; border-radius: 4px;")))
+                   (:input :type "submit" :value "Save Preferences")))
         (:script "
 function updateThemePreview(themeValue) {
   // Find all stylesheet links
@@ -777,10 +775,7 @@ function updateThemePreview(themeValue) {
                                  :style "padding: 6px; font-size: 1em; border: 1px solid #bababa;
                                      border-radius: 4px; font-family: monospace;")
                          " "
-                         (:input :type "submit" :value "Create Board"
-                                 :style "padding: 6px 12px; font-size: 1em; background-color: #ededed;
-                                     border: 1px solid #b5b5b5; border-radius: 4px; cursor: pointer;
-                                     font-weight: bold;"))
+                         (:input :type "submit" :value "Create Board"))
                   (:p :id "board-error" :style "color: red; font-size: 0.9em; margin: 0.5em 0; display: none;"))
             (:script :type "text/javascript"
                      "function validateCreateBoard() {
@@ -898,11 +893,7 @@ function updateThemePreview(themeValue) {
       (cl-who:with-html-output-to-string (s nil :indent t)
         (:h1 "Search Results")
         (:p :style "margin: 0.5em 2%;"
-            (:button :onclick "history.back();"
-                     :style "padding: 3px 10px; font-size: 0.85em; cursor: pointer;
-                             background-color: #ededed; border: 1px solid #bababa;
-                             border-radius: 4px; font-weight: bold;"
-                     "← Go Back")
+            (:button :class "lisp-btn" :onclick "history.back();" "← Go Back")
             " - Query: "
             (:strong (cl-who:esc query)))
         (:hr)
@@ -999,12 +990,8 @@ function updateThemePreview(themeValue) {
                                             "overflow: auto; white-space: pre-wrap;")
                         "")
                   (:div :style "display: flex; gap: 10px; margin-bottom: 1em;"
-                        (:button :id "playground-run"
-                                 :style "padding: 6px 15px; font-size: 1em; cursor: pointer; font-weight: bold;"
-                                 "Run Code")
-                        (:button :id "playground-clear"
-                                 :style "padding: 6px 15px; font-size: 1em; cursor: pointer;"
-                                 "Clear Output"))
+                        (:button :id "playground-run" :class "lisp-btn" "Run Code")
+                        (:button :id "playground-clear" :class "lisp-btn" "Clear Output"))
                   (:h3 "Output Console")
                   (:pre :id "playground-output"
                         :style (concatenate 'string

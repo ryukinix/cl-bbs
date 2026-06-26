@@ -24,7 +24,7 @@
 <P>Search through all posts and threads on all boards case-insensitively.</P>
 <FORM action="/search" method="GET" style="margin: 1em 0; display: flex; gap: 10px; align-items: center;">
   <INPUT type="text" name="q" placeholder="Search posts..." style="padding: 6px; font-size: 1em; border: 1px solid #bababa; border-radius: 4px; font-family: monospace; width: 300px;" />
-  <BUTTON type="submit" style="padding: 6px 12px; font-size: 1em; background-color: #ededed; border: 1px solid #b5b5b5; border-radius: 4px; cursor: pointer; font-weight: bold;">Search All Boards</BUTTON>
+  <BUTTON type="submit" class="lisp-btn">Search</BUTTON>
 </FORM>
 
 
@@ -48,7 +48,8 @@
   ((lambda (f) (f f))
    (lambda (f) (h (lambda (x) ((f f) x))))))</PRE></TD></TR>
 <TR><TD><KBD>```lisp<BR>;;;Executable snippet<BR>(format t "Hello")<BR>```</KBD></TD>
-<TD><PRE class="lisp-code-block"><SPAN class=""><SPAN class="paren1">(<SPAN class="">format t <SPAN class="string">"Hello"</SPAN></SPAN>)</SPAN></SPAN></PRE><P style="font-size: 0.85em; font-style: italic;">Renders as a syntax-highlighted, client-side executable Common Lisp snippet via JSCL. You can also try out the <B>interactive Lisp Playground</B> by clicking the <B>λ</B> link in the navigation menu!</P></TD></TR></TBODY></TABLE>
+<TD><PRE class="lisp-code-block"><SPAN class=""><SPAN class="paren1">(<SPAN class="">format t <SPAN class="string">"Hello"</SPAN></SPAN>)</SPAN></SPAN></PRE><P style="font-size: 0.85em; font-style: italic;">Renders as a syntax-highlighted, client-side executable Common Lisp snippet via JSCL. You can also try out the <B>interactive Lisp Playground</B> by clicking the <B>λ</B> link in the navigation menu!</P></TD></TR>
+<TR><TD><KBD>Ctrl+Enter</KBD></TD><TD>In multiline inputs (post, reply, playground): submit or evaluate without leaving the keyboard.</TD></TR></TBODY></TABLE>
 
 <H2>Source Code</H2>
 <P>Check this new textboard written in Common Lisp called cl-bbs at <A href="https://github.com/ryukinix/cl-bbs">github</A>. This version is fully refactored, robustly tested, and packaged with local sandbox package locks. You can also view the original MIT Scheme draft of SchemeBBS at <A href="https://github.com/alyssa-p-hacker/SchemeBBS">SchemeBBS</A>.</P>

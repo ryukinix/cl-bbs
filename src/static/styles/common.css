@@ -85,8 +85,6 @@ h2 {
 .error-back-button {
   padding: 8px 16px;
   font-weight: bold;
-  background-color: #fdd;
-  border: 1px solid #c99;
   border-radius: 4px;
   cursor: pointer;
 }
@@ -122,11 +120,6 @@ body.moderation li {
 
 body.moderation form {
   margin: 0;
-}
-
-body.moderation input[type=submit] {
-  padding: 4px 10px;
-  font-size: 0.85em;
 }
 
 body.moderation table {
@@ -183,6 +176,37 @@ body.moderation .comment-preview {
   padding: 0.5em;
   background-color: #fafafa;
   border-left: 3px solid #ccc;
+}
+
+/* Global button reset — all submit inputs and bare buttons share the canonical style */
+input[type=submit],
+button {
+  padding: 4px 10px;
+  font-size: 0.85em;
+  font-family: inherit;
+  background: transparent;
+  color: inherit;
+  border: 1px solid currentColor;
+  cursor: pointer;
+  border-radius: 3px;
+  user-select: none;
+  margin: 0.4em 0;
+}
+
+input[type=submit]:hover,
+button:hover {
+  background-color: rgba(128, 128, 128, 0.15);
+}
+
+input[type=submit]:active,
+button:active {
+  background-color: rgba(128, 128, 128, 0.3);
+}
+
+input[type=submit]:disabled,
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Lisp Interactive Snippets & Playground Styles */
