@@ -139,6 +139,9 @@ document.addEventListener('DOMContentLoaded', function() {
 (defun render-error-page (error-message &optional (prefs *preferences*))
   "Renders an HTML error page displaying the given ERROR-MESSAGE, using the specified layout PREFS."
   (layout "Error - cl-bbs" "error-page" prefs
+    :og-title "Error - cl-bbs"
+    :og-description "An error occurred."
+    :og-type "website"
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:h1 "Error")
       (:hr)
@@ -509,6 +512,9 @@ document.addEventListener('DOMContentLoaded', function() {
   "Renders the board index (frontpage) HTML with the list of active THREADS
 and the new thread form, using layout PREFS."
   (layout (format nil "/~a/ - cl-bbs" board) nil prefs
+    :og-title (format nil "/~a/ - cl-bbs" board)
+    :og-description (format nil "Board ~a on cl-bbs" board)
+    :og-url (format nil "/~a/" board)
     (cl-who:with-html-output-to-string (s nil :indent t)
       (cl-who:str (render-board-name board))
       (cl-who:str (render-menu board "front"))
@@ -524,6 +530,9 @@ and the new thread form, using layout PREFS."
 (defun render-list (board threads &optional (prefs *preferences*))
   "Renders the board thread-list HTML page, showing all THREADS in tabular format, using layout PREFS."
   (layout (format nil "/~a/ - cl-bbs" board) nil prefs
+    :og-title (format nil "/~a/ - cl-bbs" board)
+    :og-description (format nil "Board ~a on cl-bbs" board)
+    :og-url (format nil "/~a/" board)
     (cl-who:with-html-output-to-string (s nil :indent t)
       (cl-who:str (render-board-name board))
       (cl-who:str (render-menu board "list"))
@@ -582,6 +591,10 @@ optionally filtered by RANGE-STRING, using layout PREFS."
                             (lambda (id) (gethash id allowed-ids)))
                           (lambda (id) (declare (ignore id)) t))))
     (layout (format nil "/~a/ - cl-bbs" board) "thread" prefs
+      :og-title (if headline (format nil "~a - /~a/ - cl-bbs" headline board) (format nil "/~a/ - cl-bbs" board))
+      :og-description (format nil "Thread #~a on board ~a" thread-id board)
+      :og-url (format nil "/~a/~a" board thread-id)
+      :og-type "article"
       (cl-who:with-html-output-to-string (s nil :indent t)
         (cl-who:str (render-board-name board))
         (cl-who:str (render-menu board "thread"))
