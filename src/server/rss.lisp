@@ -23,9 +23,13 @@
   "Try to convert simple ISO 8601 string to RFC1123/RFC822. If fails, return now."
   (let ((clean-string (cl-ppcre:regex-replace-all " " iso-8601-string "T")))
     (handler-case
-        (local-time:format-rfc1123-timestring nil (local-time:parse-timestring clean-string))
+        (local-time:format-rfc1123-timestring nil (local-time:parse-timestring clean-string)
+                                              :timezone local-time:*default-timezone*)
       (error ()
-        (local-time:format-rfc1123-timestring nil (local-time:now))))))
+        (local-time:format-rfc1123-timestring nil (local-time:now)
+                                              :timezone local-time:*default-timezone*)))))
+
+
 
 (defun get-all-boards-rss-threads (limit)
   "Fetch latest threads from all boards combining them for RSS."
@@ -53,7 +57,7 @@
 (defun generate-rss (board threads env)
   "Generate an RSS feed for the given board and threads."
   (let* ((now (local-time:now))
-         (rfc822-date (local-time:format-rfc1123-timestring nil now))
+         (rfc822-date (local-time:format-rfc1123-timestring nil now :timezone local-time:*default-timezone*))
          (base-url (get-request-base-url env))
          (request-url (format nil "~a~a" base-url (getf env :request-uri))))
     (with-output-to-string (s)
