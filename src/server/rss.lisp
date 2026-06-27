@@ -19,22 +19,26 @@
         (format nil "~a://~a" scheme host)
         "")))
 
+(defun get-tz-offset-string ()
+  "Returns the basic timezone offset of the machine like '-0300' or '+0000'."
+  (multiple-value-bind (sec min hr date month year day-of-week dst-p tz)
+      (get-decoded-time)
+    (declare (ignore sec min hr date month year day-of-week dst-p))
+    (let* ((offset-hours (- tz))
+           (sign (if (>= offset-hours 0) #\+ #\-))
+           (abs-hours (abs offset-hours)))
+      (format nil "~c~2,'0d00" sign (truncate abs-hours)))))
+
 (defun convert-to-rfc822 (iso-8601-string)
-  "Try to convert simple ISO 8601 string to RFC1123/RFC822. If fails, return now."
-  ;; local-time needs to be explicitly synced with the TZ environment variable
-  ;; if we want *default-timezone* (which format-rfc1123 defaults to) to match it.
-  (when (uiop:getenv "TZ")
-    (local-time:reread-timezone-repository))
-  (let ((clean-string (cl-ppcre:regex-replace-all " " iso-8601-string "T"))
-        (zone (if (uiop:getenv "TZ")
-                  (local-time:find-timezone-by-location-name (uiop:getenv "TZ"))
-                  local-time:*default-timezone*)))
+  "Convert simple ISO 8601 string to RFC1123/RFC822 retaining literal parsing and appending manual offset."
+  (let ((clean-string (cl-ppcre:regex-replace-all " " iso-8601-string "T")))
     (handler-case
-        (local-time:format-rfc1123-timestring nil (local-time:parse-timestring clean-string)
-                                              :timezone zone)
+        (let* ((parsed (local-time:parse-timestring clean-string))
+               (utc-str (local-time:format-rfc1123-timestring nil parsed :timezone local-time:+utc-zone+)))
+          (cl-ppcre:regex-replace "GMT$" utc-str (get-tz-offset-string)))
       (error ()
-        (local-time:format-rfc1123-timestring nil (local-time:now)
-                                              :timezone zone)))))
+        (let ((now-utc (local-time:format-rfc1123-timestring nil (local-time:now) :timezone local-time:+utc-zone+)))
+          (cl-ppcre:regex-replace "GMT$" now-utc (get-tz-offset-string)))))))
 
 
 
@@ -63,13 +67,9 @@
 
 (defun generate-rss (board threads env)
   "Generate an RSS feed for the given board and threads."
-  (when (uiop:getenv "TZ")
-    (local-time:reread-timezone-repository))
-  (let* ((zone (if (uiop:getenv "TZ")
-                   (local-time:find-timezone-by-location-name (uiop:getenv "TZ"))
-                   local-time:*default-timezone*))
-         (now (local-time:now))
-         (rfc822-date (local-time:format-rfc1123-timestring nil now :timezone zone))
+  (let* ((now (local-time:now))
+         (utc-str (local-time:format-rfc1123-timestring nil now :timezone local-time:+utc-zone+))
+         (rfc822-date (cl-ppcre:regex-replace "GMT$" utc-str (get-tz-offset-string)))
          (base-url (get-request-base-url env))
          (request-url (format nil "~a~a" base-url (getf env :request-uri))))
     (with-output-to-string (s)
