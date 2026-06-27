@@ -1,7 +1,7 @@
 (defpackage #:cl-bbs/rss
-  (:use #:cl
-        #:cl-bbs/models
-        #:cl-bbs/storage)
+  (:use #:cl)
+  (:local-nicknames (#:models #:models)
+                    (#:storage #:storage))
   (:export #:generate-rss
            #:get-all-boards-rss-threads))
 
@@ -9,12 +9,12 @@
 
 (defun get-request-base-url (env)
   "Construct the base URL from the request environment."
-  (let* ((scheme (if (string= "https" (gethash "x-forwarded-proto" (getf env :headers)))
+  (let ((scheme (if (string= "https" (gethash "x-forwarded-proto" (getf env :headers)))
                      "https"
                      (if (getf env :url-scheme)
                          (string-downcase (symbol-name (getf env :url-scheme)))
                          "http")))
-         (host (gethash "host" (getf env :headers))))
+        (host (gethash "host" (getf env :headers))))
     (if host
         (format nil "~a://~a" scheme host)
         "")))
@@ -29,21 +29,21 @@
 (defun get-all-boards-rss-threads (limit)
   "Fetch latest threads from all boards combining them for RSS."
   (let ((all-threads nil)
-        (sexp-base (merge-pathnames "sexp/" cl-bbs/storage:*base-dir*)))
+        (sexp-base (merge-pathnames "sexp/" storage:*base-dir*)))
     (when (probe-file sexp-base)
       (loop for board-dir in (uiop:subdirectories sexp-base) do
-        (let* ((board-name (car (last (pathname-directory board-dir))))
+        (let ((board-name (car (last (pathname-directory board-dir))))
                (list-path (merge-pathnames "list" board-dir)))
           (when (probe-file list-path)
-            (let ((board-threads (cl-bbs/storage:read-sexp-file list-path)))
+            (let ((board-threads (storage:read-sexp-file list-path)))
               (loop for thread in board-threads do
-                ;; thread is (ID (cl-bbs/models:headline . "...") (cl-bbs/models:date . "..."))
-                (push (cons (car thread) (cons `(cl-bbs/models:board . ,board-name) (cdr thread))) all-threads)))))))
+                ;; thread is (ID (models:headline . "...") (models:date . "..."))
+                (push (cons (car thread) (cons `(models:board . ,board-name) (cdr thread))) all-threads)))))))
     ;; Sort by date descending
     (setf all-threads (sort all-threads
                             (lambda (a b)
-                              (string> (cdr (assoc 'cl-bbs/models:date (cdr a)))
-                                       (cdr (assoc 'cl-bbs/models:date (cdr b)))))))
+                              (string> (cdr (assoc 'models:date (cdr a)))
+                                       (cdr (assoc 'models:date (cdr b)))))))
     ;; Take top LIMIT
     (if (> (length all-threads) limit)
         (subseq all-threads 0 limit)
@@ -69,15 +69,15 @@
       (format s "    <link>~a</link>~%" request-url)
       (format s "    <pubDate>~a</pubDate>~%" rfc822-date)
       (format s "    <generator>cl-bbs RSS generator</generator>~%")
-      
+
       (loop for t-entry in threads do
         (let* ((id (car t-entry))
                (thread-data (cdr t-entry))
                (board-val (if (string= board "all")
-                              (or (cdr (assoc 'cl-bbs/models:board thread-data)) board)
+                              (or (cdr (assoc 'models:board thread-data)) board)
                               board))
-               (headline (or (cdr (assoc 'cl-bbs/models:headline thread-data)) "Untitled"))
-               (date (or (cdr (assoc 'cl-bbs/models:date thread-data)) rfc822-date)) ; ISO 8601
+               (headline (or (cdr (assoc 'models:headline thread-data)) "Untitled"))
+               (date (or (cdr (assoc 'models:date thread-data)) rfc822-date)) ; ISO 8601
                (pub-date (if (string= date rfc822-date) rfc822-date (convert-to-rfc822 date)))
                (thread-url (if (not (string= base-url ""))
                                (format nil "~a/~a/~a" base-url board-val id)
@@ -89,6 +89,6 @@
           (format s "      <pubDate>~a</pubDate>~%" pub-date)
           (format s "      <guid>~a</guid>~%" thread-url)
           (format s "    </item>~%")))
-      
+
       (format s "  </channel>~%")
       (format s "</rss>~%"))))
