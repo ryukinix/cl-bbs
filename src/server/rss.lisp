@@ -1,7 +1,7 @@
 (defpackage #:cl-bbs/rss
   (:use #:cl)
-  (:local-nicknames (#:models #:models)
-                    (#:storage #:storage))
+  (:local-nicknames (#:models #:cl-bbs/models)
+                    (#:storage #:cl-bbs/storage))
   (:export #:generate-rss
            #:get-all-boards-rss-threads))
 
