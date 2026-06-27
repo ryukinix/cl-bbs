@@ -21,13 +21,20 @@
 
 (defun convert-to-rfc822 (iso-8601-string)
   "Try to convert simple ISO 8601 string to RFC1123/RFC822. If fails, return now."
-  (let ((clean-string (cl-ppcre:regex-replace-all " " iso-8601-string "T")))
+  ;; local-time needs to be explicitly synced with the TZ environment variable
+  ;; if we want *default-timezone* (which format-rfc1123 defaults to) to match it.
+  (when (uiop:getenv "TZ")
+    (local-time:reread-timezone-repository))
+  (let ((clean-string (cl-ppcre:regex-replace-all " " iso-8601-string "T"))
+        (zone (if (uiop:getenv "TZ")
+                  (local-time:find-timezone-by-location-name (uiop:getenv "TZ"))
+                  local-time:*default-timezone*)))
     (handler-case
         (local-time:format-rfc1123-timestring nil (local-time:parse-timestring clean-string)
-                                              :timezone local-time:*default-timezone*)
+                                              :timezone zone)
       (error ()
         (local-time:format-rfc1123-timestring nil (local-time:now)
-                                              :timezone local-time:*default-timezone*)))))
+                                              :timezone zone)))))
 
 
 
@@ -56,8 +63,13 @@
 
 (defun generate-rss (board threads env)
   "Generate an RSS feed for the given board and threads."
-  (let* ((now (local-time:now))
-         (rfc822-date (local-time:format-rfc1123-timestring nil now :timezone local-time:*default-timezone*))
+  (when (uiop:getenv "TZ")
+    (local-time:reread-timezone-repository))
+  (let* ((zone (if (uiop:getenv "TZ")
+                   (local-time:find-timezone-by-location-name (uiop:getenv "TZ"))
+                   local-time:*default-timezone*))
+         (now (local-time:now))
+         (rfc822-date (local-time:format-rfc1123-timestring nil now :timezone zone))
          (base-url (get-request-base-url env))
          (request-url (format nil "~a~a" base-url (getf env :request-uri))))
     (with-output-to-string (s)
