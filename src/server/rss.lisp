@@ -35,10 +35,10 @@
     (handler-case
         (let* ((parsed (local-time:parse-timestring clean-string))
                (utc-str (local-time:format-rfc1123-timestring nil parsed :timezone local-time:+utc-zone+)))
-          (cl-ppcre:regex-replace "GMT$" utc-str (get-tz-offset-string)))
+          (cl-ppcre:regex-replace "(?:GMT|\\+0000)$" utc-str (get-tz-offset-string)))
       (error ()
         (let ((now-utc (local-time:format-rfc1123-timestring nil (local-time:now) :timezone local-time:+utc-zone+)))
-          (cl-ppcre:regex-replace "GMT$" now-utc (get-tz-offset-string)))))))
+          (cl-ppcre:regex-replace "(?:GMT|\\+0000)$" now-utc (get-tz-offset-string)))))))
 
 
 
@@ -69,7 +69,7 @@
   "Generate an RSS feed for the given board and threads."
   (let* ((now (local-time:now))
          (utc-str (local-time:format-rfc1123-timestring nil now :timezone local-time:+utc-zone+))
-         (rfc822-date (cl-ppcre:regex-replace "GMT$" utc-str (get-tz-offset-string)))
+         (rfc822-date (cl-ppcre:regex-replace "(?:GMT|\\+0000)$" utc-str (get-tz-offset-string)))
          (base-url (get-request-base-url env))
          (request-url (format nil "~a~a" base-url (getf env :request-uri))))
     (with-output-to-string (s)
