@@ -69,7 +69,7 @@
   "Generate an RSS feed for the given board and threads."
   (let* ((now (local-time:now))
          (utc-str (local-time:format-rfc1123-timestring nil now :timezone local-time:+utc-zone+))
-         (rfc822-date (cl-ppcre:regex-replace "(?:GMT|\\+0000)$" utc-str (get-tz-offset-string)))
+         (rfc822-date utc-str)
          (base-url (get-request-base-url env))
          (request-url (format nil "~a~a" base-url (getf env :request-uri))))
     (with-output-to-string (s)
