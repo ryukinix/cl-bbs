@@ -21,10 +21,11 @@
 
 (defun convert-to-rfc822 (iso-8601-string)
   "Try to convert simple ISO 8601 string to RFC1123/RFC822. If fails, return now."
-  (handler-case
-      (local-time:format-rfc1123-timestring nil (local-time:parse-timestring iso-8601-string))
-    (error ()
-      (local-time:format-rfc1123-timestring nil (local-time:now)))))
+  (let ((clean-string (cl-ppcre:regex-replace-all " " iso-8601-string "T")))
+    (handler-case
+        (local-time:format-rfc1123-timestring nil (local-time:parse-timestring clean-string))
+      (error ()
+        (local-time:format-rfc1123-timestring nil (local-time:now))))))
 
 (defun get-all-boards-rss-threads (limit)
   "Fetch latest threads from all boards combining them for RSS."
