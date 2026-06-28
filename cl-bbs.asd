@@ -98,6 +98,7 @@
                 :components ((:file "models")
                              (:file "storage")
                              (:file "views")
+                             (:file "rss")
                              (:file "handlers")
                              (:file "admin")))
                (:module "integration"

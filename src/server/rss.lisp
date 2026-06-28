@@ -7,14 +7,19 @@
 
 (in-package #:cl-bbs/rss)
 
+(defun get-url-scheme (env headers)
+  (if (string= "https" (gethash "x-forwarded-proto" headers))
+      "https"
+      (let ((url-scheme (getf env :url-scheme)))
+        (if url-scheme
+            (string-downcase (string url-scheme))
+            "http"))))
+
 (defun get-request-base-url (env)
   "Construct the base URL from the request environment."
-  (let ((scheme (if (string= "https" (gethash "x-forwarded-proto" (getf env :headers)))
-                     "https"
-                     (if (getf env :url-scheme)
-                         (string-downcase (symbol-name (getf env :url-scheme)))
-                         "http")))
-        (host (gethash "host" (getf env :headers))))
+  (let* ((headers (getf env :headers))
+         (scheme (get-url-scheme env headers))
+         (host (gethash "host" headers)))
     (if host
         (format nil "~a://~a" scheme host)
         "")))
@@ -68,7 +73,7 @@
 (defun generate-rss (board threads env)
   "Generate an RSS feed for the given board and threads."
   (let* ((now (local-time:now))
-         (utc-str (local-time:format-rfc1123-timestring nil now :timezone local-time:+utc-zone+))
+         (utc-str (local-time:format-rfc1123-timestring nil now))
          (rfc822-date utc-str)
          (base-url (get-request-base-url env))
          (request-url (format nil "~a~a" base-url (getf env :request-uri))))
