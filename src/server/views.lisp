@@ -50,7 +50,7 @@
               (error () nil))
             "unknown"))))
 
-(defun render-footer-html ()
+(defun render-footer-html (&optional board)
   "Renders the common footer HTML with cl-bbs version hash and a GitHub link."
   (let ((hash (get-git-commit-hash)))
     (cl-who:with-html-output-to-string (s nil :indent t)
@@ -58,7 +58,11 @@
           "cl-bbs version:"
           (:a :href (format nil "https://github.com/ryukinix/cl-bbs/commit/~a" hash)
               :target "_blank"
-              (cl-who:esc hash))))))
+              (cl-who:esc hash))
+          " - "
+          (:a :href (if board (format nil "/~a/rss" board) "/rss")
+              :target "_blank"
+              "RSS Feed")))))
 
 (defun render-board-name (board)
   (cl-who:with-html-output-to-string (s nil :indent t)
@@ -519,7 +523,7 @@ and the new thread form, using layout PREFS."
       (unless (is-board-locked board)
         (cl-who:htm (cl-who:str (render-thread-form board))))
       (:hr)
-      (cl-who:str (render-footer-html)))))
+      (cl-who:str (render-footer-html board)))))
 
 (defun render-list (board threads &optional (prefs *preferences*))
   "Renders the board thread-list HTML page, showing all THREADS in tabular format, using layout PREFS."
@@ -544,7 +548,7 @@ and the new thread form, using layout PREFS."
                                 (:td (cl-who:str (format nil "~a" messages)))
                                 (:td (:samp (cl-who:esc date)))))))))
       (:hr)
-      (cl-who:str (render-footer-html)))))
+      (cl-who:str (render-footer-html board)))))
 
 (defun render-thread (board thread-id thread-data &optional range-string (prefs *preferences*))
   "Renders a single thread page HTML for THREAD-ID under BOARD with THREAD-DATA (comments),
@@ -622,7 +626,7 @@ optionally filtered by RANGE-STRING, using layout PREFS."
                      (cl-who:str (format nil "~a" next-post-number))))
             (:dd (cl-who:str (render-post-form board thread-id))))))
         (:hr)
-        (cl-who:str (render-footer-html))))))
+        (cl-who:str (render-footer-html board))))))
 
 (defun render-preferences (board &optional (prefs *preferences*))
   "Renders the board preferences HTML page, allowing users to choose a custom

@@ -4,11 +4,14 @@
                 #:*base-dir*
                 #:read-sexp-file
                 #:write-sexp-file
-                #:ensure-board-dirs
-                #:is-board-locked)
-  (:import-from :cl-bbs/views
-                #:render-moderation
-                #:render-index
+                #:is-board-locked
+                #:ensure-board-dirs)
+                (:import-from :cl-bbs/rss
+                 #:generate-rss
+                 #:get-all-boards-rss-threads)
+                (:import-from :cl-bbs/views
+                 #:render-moderation
+                 #:render-index
                 #:render-list
                 #:render-preferences
                 #:render-error-page
@@ -692,6 +695,25 @@ hyphens, and underscores. Otherwise returns nil to prevent injection/directory t
                  :set-cookie ,(format nil "search_local_only=~a; Path=/; Max-Age=31536000" search-local-only)
                  :set-cookie ,(format nil "search_position=~a; Path=/; Max-Age=31536000" search-position))
                 ("Redirecting...")))))
+
+;; RSS Feed (All boards)
+(setf (ningle:route *app* "/rss" :method :GET)
+      (lambda (params)
+        (declare (ignore params))
+        (let ((env (lack.request:request-env ningle:*request*))
+              (all-threads (cl-bbs/rss:get-all-boards-rss-threads 20)))
+          (list 200 '(:content-type "application/rss+xml; charset=utf-8")
+                (list (cl-bbs/rss:generate-rss "all" all-threads env))))))
+
+;; RSS Feed (Specific board)
+(setf (ningle:route *app* "/:board/rss" :method :GET)
+      (lambda (params)
+        (let* ((board (cdr (assoc :board params)))
+               (env (lack.request:request-env ningle:*request*))
+               (list-path (merge-pathnames (format nil "sexp/~a/list" board) *base-dir*))
+               (threads (when (probe-file list-path) (read-sexp-file list-path))))
+          (list 200 '(:content-type "application/rss+xml; charset=utf-8")
+                (list (cl-bbs/rss:generate-rss board threads env))))))
 
 ;; 10. POST /:board/post (New Thread)
 (setf (ningle:route *app* "/:board/post" :method :POST)

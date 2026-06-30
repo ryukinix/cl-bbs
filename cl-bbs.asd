@@ -68,6 +68,7 @@
                 :depends-on ("package")
                 :components ((:file "models")
                              (:file "storage" :depends-on ("models"))
+                             (:file "rss" :depends-on ("models" "storage"))
                              (:file "views" :depends-on ("models"))
                              (:file "handlers" :depends-on ("storage" "views"))
                              (:file "main" :depends-on ("handlers" "storage"))
@@ -97,6 +98,7 @@
                 :components ((:file "models")
                              (:file "storage")
                              (:file "views")
+                             (:file "rss")
                              (:file "handlers")
                              (:file "admin")))
                (:module "integration"
