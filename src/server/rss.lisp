@@ -107,7 +107,9 @@
                (thread-path (merge-pathnames (format nil "sexp/~a/~a" board-val id) storage:*base-dir*))
                (thread-full-data (when (probe-file thread-path) (storage:read-sexp-file thread-path)))
                (posts (cdr (assoc 'models:posts thread-full-data)))
-               (first-post (when posts (cadar posts)))
+               ;; `posts` is an alist mapping IDs to post-data, e.g. ((1 (date . "") (content . "")))
+               ;; so `cadar posts` gets the cdr of the first cons pair.
+               (first-post (when posts (cdar posts)))
                (content (if first-post (cdr (assoc 'models:content first-post)) "")))
           (format s "    <item>~%")
           (format s "      <title><![CDATA[~a]]></title>~%" headline)
