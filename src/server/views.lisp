@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', function() {
          (board (and (board-view-p path) (get-current-board-from-path path))))
     (cl-who:with-html-output-to-string (s nil :indent t)
       (:div :style "display: flex; justify-content: space-between; align-items: center; margin: 0.5em 2% 1em 2%;"
-            (:p :class "boards" :style "font-size: 0.9em; margin: 0;"
+            (:p :class "boards" :style "font-size: 0.8em; margin: 0;"
                 "[ "
                 (loop for board in boards
                       for i from 0
